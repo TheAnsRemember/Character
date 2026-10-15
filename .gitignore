@@ -28,3 +28,7 @@ __pycache__/
 .DS_Store
 .idea/
 .vscode/
+
+# ===== 分发包产物（scripts/build-macos-release.sh 生成，不进版本库）=====
+dist/
+.pkgbuild-tmp/
