@@ -656,7 +656,7 @@ function newCapture() {
 /* —— 语言包：只放界面文案，不放被存档的数据 —— */
 const I18N = {
   zh: {
-    newTask: '+ 新任务',
+    newTask: '+ 新的一页',
     discardDraft: '当前这页还没存档，确定丢弃、直接开新的一页吗？',
     wsTasks: '任务',
     wsSpaces: '空间',
@@ -720,7 +720,7 @@ const I18N = {
     stRaw: '已记录', stDone: '已总结', stFail: '处理失败',
   },
   en: {
-    newTask: '+ New task',
+    newTask: '+ New page',
     discardDraft: "This page hasn't been archived yet. Discard it and start a new one?",
     wsTasks: 'Tasks',
     wsSpaces: 'Spaces',

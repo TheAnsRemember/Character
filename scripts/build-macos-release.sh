@@ -29,6 +29,9 @@ done
 # 拷文档
 cp "$ROOT/README.md" "$STAGE/Character/" 2>/dev/null || true
 [ -f "$ROOT/安装说明.md" ] && cp "$ROOT/安装说明.md" "$STAGE/Character/"
+# 本地域名（character.test）所需：转发器 + 守护配置模板
+cp "$ROOT/desktop-button/macos-proxy.py" "$STAGE/Character/" 2>/dev/null || true
+cp "$ROOT/desktop-button/com.character.proxy.plist" "$STAGE/Character/" 2>/dev/null || true
 # 排除不该分发的本机文件
 find "$STAGE/Character" -name '.DS_Store' -delete 2>/dev/null || true
 find "$STAGE/Character/web" -name 'local_config.json' -delete 2>/dev/null || true
@@ -118,9 +121,52 @@ MEM="$HOME/Library/Application Support/Character/project.txt"
 mkdir -p "$(dirname "$MEM")"
 printf '%s' "$SRC_DIR" > "$MEM"
 
-osascript <<'EOS'
-display dialog "✅ 装好了！\n\n桌面上已出现 Character 图标，以后双击它就能打开 Character。\n\n（首次若被 macOS 拦，右键 → 打开 确认一次即可）" buttons {"好"} default button 1 with title "Character 安装完成"
-EOS
+# ---- 可选：配置本地域名 character.test（只影响本机、不联网）----
+# 会调起系统授权框让用户输一次开机密码；用户点"好"即可，拒绝也不影响使用（回退 localhost）。
+DOMAIN_OK=0
+PORT80_BUSY=$(lsof -tiTCP:80 -sTCP:LISTEN -n -P 2>/dev/null | head -1)
+ANSWER=$(osascript <<'EOD' 2>/dev/null || echo "skip"
+set q to button 2 of (display dialog "要不要顺便把网址变成 character.test？\n\n就是让打开后的地址从 localhost:8787 变成更像正式网站的 character.test。\n\n这只会改你本机的一个设置并注册一个开机自启的小程序，不联网、不上传任何东西。\n\n（会请你输一次开机密码；跳过也没关系，之后照样能用 localhost。）" buttons {"跳过，用 localhost", "好，配 character.test"} default button 2 with title "Character · 可选的网址美化")
+return (q is "好，配 character.test")
+EOD
+)
+if [ "$ANSWER" = "1" ] && [ -z "$PORT80_BUSY" ]; then
+  LIB_DIR="/usr/local/lib/character"
+  if mkdir -p "$LIB_DIR" 2>/dev/null || sudo mkdir -p "$LIB_DIR" 2>/dev/null; then
+    if cp "$SRC_DIR/Character.app/Contents/MacOS/character" /tmp/_ch 2>/dev/null; then
+      : # 转发器用 macos-proxy.py（若包内有）
+    fi
+    if [ -f "$SRC_DIR/../../macos-proxy.py" ] || [ -f "$SRC_DIR/macos-proxy.py" ]; then
+      PX_SRC="$SRC_DIR/macos-proxy.py"; [ -f "$SRC_DIR/../../macos-proxy.py" ] && PX_SRC="$SRC_DIR/../../macos-proxy.py"
+      sudo mkdir -p "$LIB_DIR" 2>/dev/null
+      sudo cp "$PX_SRC" "$LIB_DIR/macos-proxy.py" 2>/dev/null && {
+        # 写 launchd 守护配置
+        PLIST_SRC="$SRC_DIR/com.character.proxy.plist"
+        [ -f "$PLIST_SRC" ] || PLIST_SRC="$SRC_DIR/../../desktop-button/com.character.proxy.plist"
+        sudo sed -e "s|__PROXY_PATH__|$LIB_DIR/macos-proxy.py|g" -e "s|__LOG_PATH__|$LIB_DIR/proxy.log|g" "$PLIST_SRC" > /tmp/_pl 2>/dev/null && \
+        sudo cp /tmp/_pl /Library/LaunchDaemons/com.character.proxy.plist 2>/dev/null
+        # hosts 加一行（幂等）
+        grep -q 'character.test' /etc/hosts 2>/dev/null || echo '127.0.0.1 character.test' | sudo tee -a /etc/hosts >/dev/null 2>&1
+        sudo launchctl unload /Library/LaunchDaemons/com.character.proxy.plist >/dev/null 2>&1
+        if sudo launchctl load /Library/LaunchDaemons/com.character.proxy.plist 2>/dev/null; then DOMAIN_OK=1; fi
+      }
+    fi
+  fi
+  rm -f /tmp/_ch /tmp/_pl 2>/dev/null
+fi
+
+if [ "$DOMAIN_OK" = "1" ]; then
+  # 让按钮打开 character.test
+  sudo sed -i '' 's|URL="http://localhost:8787/app"|URL="http://character.test/app"|' "$DESK/Contents/MacOS/character" 2>/dev/null || \
+    sed -i '' 's|URL="http://localhost:8787/app"|URL="http://character.test/app"|' "$DESK/Contents/MacOS/character" 2>/dev/null
+  MSG="✅ 装好了！\n\n桌面上已出现 Character 图标，以后双击它就能打开 Character。\n\n网址：\x1b[http://character.test/app\x1b\x07\n\n（首次若被 macOS 拦，右键 → 打开 确认一次即可）"
+  TITLE="Character 安装完成"
+else
+  MSG="✅ 装好了！\n\n桌面上已出现 Character 图标，以后双击它就能打开 Character。\n\n网址：http://localhost:8787/app\n\n（首次若被 macOS 拦，右键 → 打开 确认一次即可）"
+  TITLE="Character 安装完成"
+fi
+
+osascript -e "display dialog \"$MSG\" buttons {\"好\"} default button 1 with title \"$TITLE\"" >/dev/null 2>&1
 exit 0
 INSTALL
 chmod +x "$INSTALL_CMD"
