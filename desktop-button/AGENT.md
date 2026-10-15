@@ -21,7 +21,12 @@ Character 是一个本地写作 + AI 分类/总结的小工具，本体是一个
 点击按钮后的行为：
 1. 检查本机 `8787` 端口是否已经起来了（服务已在跑就跳过）。
 2. 没跑就启动 `web/server.py`（本地写作服务）。
-3. 等服务就绪后，自动打开默认浏览器访问 `http://localhost:8787/app`。
+3. 等服务就绪后，自动打开默认浏览器访问网页。
+
+网页地址分两种（安装器会自动选更好的那个）：
+- **macOS 且用户愿意输一次开机密码**：装好后地址是 `http://character.test/app`
+  （一个体面的本地域名，不用看 `localhost` 和数字端口）。
+- 否则（Windows，或 macOS 没授权）：退回 `http://localhost:8787/app`。
 
 ---
 
@@ -54,13 +59,22 @@ Character 是一个本地写作 + AI 分类/总结的小工具，本体是一个
 |------|------|
 | `AGENT.md` | 就是本文件，给 AI Agent 看的自描述说明 |
 | `icon.png` | 阴阳鱼 logo，按钮图标来源（1024×1024） |
-| `setup.py` | 跨平台安装器（纯 Python 标准库，零依赖），Mac 建 .app、Windows 建 .lnk |
+| `setup.py` | 跨平台安装器（纯 Python 标准库，零依赖），Mac 建 .app、Windows 建 .lnk，并负责 `character.test` 本地域名 |
 | `build-windows.ps1` | Windows 专用：由 `setup.py` 调用，负责建桌面快捷方式和启动器 |
+| `macos-proxy.py` | macOS 专用：纯标准库 TCP 转发器（80 端口 → 8787），实现 `character.test` 域名，作为系统守护进程常驻 |
+| `com.character.proxy.plist` | macOS 专用：上面转发器的 launchd 守护进程配置模板（开机自启 + 崩溃自动重启） |
 
 ---
 
 ## 注意事项
 
 - 不要把 `web/local_config.json`（里面是你的 AI 模型密钥）提交到任何公开仓库。
-- 安装器只会在**用户自己的桌面**和 **Character 项目目录**里写文件，不会动系统目录。
+- **关于「动系统目录」**：在 macOS 上，为了给你一个 `http://character.test` 这样的体面网址，
+  安装器会（经你输入一次开机密码 sudo 授权后）做三件轻微的系统改动：
+  1. 在 `/etc/hosts` 追加一行 `127.0.0.1 character.test`；
+  2. 把一个极小的转发器装到 `/usr/local/lib/character/`；
+  3. 在 `/Library/LaunchDaemons/` 注册一个系统守护进程（开机自启、崩溃自动重启，
+     把 80 端口请求转发到本地 8787 服务）。
+  这三项都只影响本机回路、不连外网；**任意一步失败都会自动回退到 `localhost:8787`，绝不会卡死安装。**
+  Windows 上不会动系统目录，只用 `localhost`。
 - 如果用户想重装 / 换位置，直接再跑一次 `setup.py <新项目路径>` 即可，会覆盖旧按钮。

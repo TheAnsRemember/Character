@@ -22,7 +22,6 @@ import subprocess
 HERE = os.path.dirname(os.path.abspath(__file__))
 ICON_PNG = os.path.join(HERE, "icon.png")
 PORT = 8787
-URL = "http://localhost:%d/app" % PORT
 
 
 # --------------------------------------------------------------------------
@@ -96,7 +95,7 @@ def find_project(arg):
 # --------------------------------------------------------------------------
 # macOS：构建 ~/Desktop/Character.app
 # --------------------------------------------------------------------------
-def build_mac(project, icon_in_project):
+def build_mac(project, icon_in_project, open_url):
     app = os.path.join(os.path.expanduser("~"), "Desktop", "Character.app")
     macos = os.path.join(app, "Contents", "MacOS")
     res = os.path.join(app, "Contents", "Resources")
@@ -143,7 +142,7 @@ if [ ! -f "$PROJ_DIR/web/server.py" ]; then
 fi
 WEB_DIR="$PROJ_DIR/web"
 PORT=__PORT__
-URL="http://localhost:$PORT/app"
+URL="__URL__"
 LOG="$PROJ_DIR/character-server.log"
 if command -v python3 >/dev/null 2>&1; then
   PY=python3
@@ -167,13 +166,100 @@ sleep 0.5
 open "$URL"
 exit 0
 '''
-    launcher = launcher.replace("__PROJ_DIR__", project).replace("__PORT__", str(PORT))
+    launcher = launcher.replace("__PROJ_DIR__", project).replace("__PORT__", str(PORT)).replace("__URL__", open_url)
     launcher_path = os.path.join(macos, "character")
     with open(launcher_path, "w") as f:
         f.write(launcher)
     os.chmod(launcher_path, 0o755)
     print("已生成桌面应用：", app)
     print("双击即可启动（首次若被拦截，右键 -> 打开）。")
+
+
+# --------------------------------------------------------------------------
+# 方案 A：本地域名 character.test（仅 macOS）
+#   把 127.0.0.1 character.test 写进 /etc/hosts，并用 launchd 守护进程跑一个
+#   纯标准库转发器（80 -> 8787），实现 http://character.test 这种体面网址。
+#   需一次性 sudo 授权；任何一步失败都回退到 localhost，绝不卡死。
+# --------------------------------------------------------------------------
+def _run(args, desc):
+    """执行命令；失败仅打印警告并返回 False，不抛异常。"""
+    try:
+        subprocess.run(args, check=True)
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        print("  [警告] %s 失败：%s" % (desc, e))
+        return False
+
+
+def setup_local_domain(project):
+    print("\n--- 配置本地域名 character.test（需一次性输入开机密码）---")
+    # 1) 端口 80 是否已被占用（被占用则放弃，避免和 Apache 等冲突）
+    try:
+        out = subprocess.run(["lsof", "-ti", ":80"], capture_output=True, text=True)
+        if out.stdout.strip():
+            print("  [跳过] 本机 80 端口已被占用，改用 http://localhost:%d" % PORT)
+            return False
+    except FileNotFoundError:
+        pass  # 没有 lsof 就跳过检测，继续尝试
+
+    # 2) 转发器落到稳定路径（与 .app 位置解耦）
+    lib_dir = "/usr/local/lib/character"
+    try:
+        os.makedirs(lib_dir, exist_ok=True)
+    except OSError as e:
+        print("  [跳过] 无法创建 %s：%s" % (lib_dir, e))
+        return False
+    proxy_dst = os.path.join(lib_dir, "macos-proxy.py")
+    shutil.copyfile(os.path.join(HERE, "macos-proxy.py"), proxy_dst)
+    log_path = os.path.join(lib_dir, "proxy.log")
+
+    # 3) /etc/hosts 幂等写入
+    hosts = "/etc/hosts"
+    try:
+        with open(hosts, "r") as f:
+            content = f.read()
+    except OSError as e:
+        print("  [跳过] 无法读 %s：%s" % (hosts, e))
+        return False
+    if "character.test" not in content:
+        add_line = "127.0.0.1 character.test\n"
+        if not _run(["sudo", "sh", "-c", "printf '%s' >> " + hosts],
+                    "写入 /etc/hosts"):
+            # 退一步：用 python 借 sudo 写
+            if not _run(
+                ["sudo", "python3", "-c",
+                 "open(%r,'a').write(%r)" % (hosts, add_line)],
+                "写入 /etc/hosts（python）"):
+                return False
+        print("  /etc/hosts 已加入 character.test")
+    else:
+        print("  /etc/hosts 已有 character.test，跳过")
+
+    # 4) 渲染并安装 plist 到 /Library/LaunchDaemons（系统级守护，开机自启）
+    plist_src = os.path.join(HERE, "com.character.proxy.plist")
+    with open(plist_src, "r") as f:
+        plist_tpl = f.read()
+    plist_tpl = plist_tpl.replace("__PROXY_PATH__", proxy_dst).replace("__LOG_PATH__", log_path)
+    tmp_plist = os.path.join(project, "com.character.proxy.plist")
+    with open(tmp_plist, "w") as f:
+        f.write(plist_tpl)
+    plist_dst = "/Library/LaunchDaemons/com.character.proxy.plist"
+    if not _run(["sudo", "cp", tmp_plist, plist_dst], "安装守护进程配置"):
+        try:
+            os.remove(tmp_plist)
+        except OSError:
+            pass
+        return False
+    try:
+        os.remove(tmp_plist)
+    except OSError:
+        pass
+
+    # 5) 加载守护进程（立即生效，且开机自启）
+    if not _run(["sudo", "launchctl", "load", plist_dst], "启动守护进程"):
+        return False
+    print("  ✓ character.test 已启用：开机自启 + 崩溃自动重启。")
+    return True
 
 
 # --------------------------------------------------------------------------
@@ -221,15 +307,26 @@ def main():
     shutil.copyfile(ICON_PNG, icon_in_project)
 
     plat = sys.platform
+    # 先尝试本地域名（方案 A），失败回退 localhost
+    domain_ok = False
+    open_url = "http://localhost:%d/app" % PORT
     if plat == "darwin":
-        build_mac(project, icon_in_project)
+        domain_ok = setup_local_domain(project)
+        if domain_ok:
+            open_url = "http://character.test/app"
+
+    if plat == "darwin":
+        build_mac(project, icon_in_project, open_url)
     elif plat.startswith("win"):
         build_windows(project, icon_in_project)
     else:
         print("暂不支持的操作系统：", plat, "（目前只支持 macOS 和 Windows）")
         sys.exit(3)
 
-    print("完成 ✓ 桌面上已出现 Character 按钮，双击即可打开网页使用。")
+    if domain_ok:
+        print("完成 ✓ 桌面上已出现 Character 按钮，双击即打开 http://character.test/app")
+    else:
+        print("完成 ✓ 桌面上已出现 Character 按钮，双击即打开 http://localhost:%d/app" % PORT)
 
 
 if __name__ == "__main__":
