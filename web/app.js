@@ -614,6 +614,65 @@ function focusTask(ts) {
 }
 
 /* ---------- 6) 视图 / 输入 ---------- */
+
+/* —— 语音输入（浏览器自带 Web Speech API，零配置零依赖，仅 Chrome/Edge 可用）——
+   灵感来了张嘴就录：点麦克风开始，再点停止，识别结果直接追加进输入框。
+   不支持时把按钮标灰并提示，绝不影响打字。 */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let micRec = null, micOn = false;
+function toggleMic() {
+  if (!SR) {                       // 浏览器不支持 → 温和提示，不打断使用
+    toast(tr('micUnsupported'));
+    return;
+  }
+  if (micOn) { micRec && micRec.stop(); return; }   // 再点一次 = 停止
+
+  const inp = $('input');
+  micRec = new SR();
+  micRec.lang = getSet('lang') === 'en' ? 'en-US' : 'zh-CN';
+  micRec.continuous = true;        // 长句不断
+  micRec.interimResults = true;    // 边说边出字
+
+  // 把这次录音的基准位置记住：新识别的字插在它前面，不打乱已写内容
+  const base = inp.value;
+  let finalText = '';
+  micRec.onresult = (e) => {
+    let interim = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const r = e.results[i];
+      if (r.isFinal) finalText += r[0].transcript;
+      else interim += r[0].transcript;
+    }
+    inp.value = base + finalText + interim;
+    inp.scrollTop = inp.scrollHeight;
+    inp.focus();
+  };
+  micRec.onerror = (e) => {
+    toast(e.error === 'not-allowed' ? tr('micDenied') : tr('micFailed'));
+    stopMic();
+  };
+  micRec.onend = () => { if (micOn) stopMic(); };   // 静音自动结束也收尾
+
+  try {
+    micRec.start();
+    micOn = true;
+    micRec && ($('micBtn').classList.add('on'));    // 按钮进入录音态
+    document.body.classList.add('mic-recording');  // 书写区留个可视提示
+    inp.focus();
+  } catch {
+    toast(tr('micFailed'));
+    stopMic();
+  }
+}
+function stopMic() {
+  micOn = false;
+  try { micRec && micRec.stop(); } catch {}
+  micRec = null;
+  const b = $('micBtn');
+  if (b) b.classList.remove('on');
+  document.body.classList.remove('mic-recording');
+}
+
 /* 「+ 新任务」= 新建入口：开一页全新的空白输入。
    若当前页已有没存档的内容，先问一句「是否丢弃」，绝不静默清空。 */
 let newPageFlash = null;                  // 新页面提示条的一次性定时器
@@ -657,6 +716,11 @@ function newCapture() {
 const I18N = {
   zh: {
     newTask: '+ 新的一页',
+    mic: '语音输入（说想法）',
+    micHint: '说想法',
+    micUnsupported: '当前浏览器不支持语音识别，请用 Chrome 或 Edge',
+    micDenied: '没拿到麦克风权限，请在浏览器地址栏允许后再试',
+    micFailed: '语音识别没能启动，请再试一次',
     discardDraft: '当前这页还没存档，确定丢弃、直接开新的一页吗？',
     wsTasks: '任务',
     wsSpaces: '空间',
@@ -721,6 +785,11 @@ const I18N = {
   },
   en: {
     newTask: '+ New page',
+    mic: 'Voice input (speak your idea)',
+    micHint: 'Speak',
+    micUnsupported: 'This browser has no speech recognition. Please use Chrome or Edge.',
+    micDenied: 'Microphone not allowed. Allow it from the address bar, then retry.',
+    micFailed: 'Speech recognition could not start. Please try again.',
     discardDraft: "This page hasn't been archived yet. Discard it and start a new one?",
     wsTasks: 'Tasks',
     wsSpaces: 'Spaces',
@@ -1049,6 +1118,7 @@ $('input').focus();
 /* 模块化（type="module"）后，HTML 内联 onclick 仍需要这些函数挂在 window 上 */
 Object.assign(window, {
   newCapture, toggleCreate, archive, summarize, copyInput,
+  toggleMic, stopMic,
   showSummaryPanel, closeSummary, copySummary,
   openSettings, closeSettings, switchSetTab,
   pickPerm, pickLang, pickTheme,

@@ -379,6 +379,25 @@ body.new-page #input { animation: newPageIn .5s ease; }
 .calli-btn:hover { background: var(--surface-2); color: var(--ink-800); }
 .calli-btn.on { background: var(--ink-950); color: var(--on-strong); }
 /* simple note 开关（iOS 同款滑块开关，开=墨黑）；紧跟字体切换，与它一起靠右 */
+/* 语音输入：点一下开始说话，再点一下停止；识别文字直接落进输入框 */
+.mic-btn {
+  display: flex; align-items: center; gap: 7px; flex: none;
+  padding: 8px 14px 8px 12px; border-radius: var(--r-sm);
+  border: 1px solid var(--line); background: transparent;
+  color: var(--ink-500); font-size: 13px; cursor: pointer;
+  transition: color .18s ease, background .18s ease, border-color .18s ease;
+}
+.mic-btn:hover { background: var(--surface-2); color: var(--ink-800); }
+.mic-btn svg { flex: none; }
+/* 录音中：变主色 + 呼吸动效，让人一眼知道正在听 */
+.mic-btn.on { color: var(--accent-blue-deep); border-color: var(--accent-blue-deep); background: var(--surface-2); }
+.mic-btn.on svg { animation: micPulse 1.15s ease-in-out infinite; }
+@keyframes micPulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+.mic-hint { white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) {
+  .mic-btn.on svg { animation: none; }
+}
+
 .sn-toggle { display: flex; align-items: center; gap: 8px; flex: none; margin-left: 10px; }
 .sn-label { font-size: 13px; color: var(--ink-500); user-select: none; }
 .switch {
