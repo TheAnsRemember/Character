@@ -42,5 +42,20 @@ bash scripts/build-macos-app.sh
 - `web/server.py` —— 本地调试 / 桌面端使用的 HTTP 服务（端口 8787）
 - `web/router/` —— 后端管线：`route`(分类) / `summarizer`(总结) / `extractor`(抽取) / `md_writer`(写 MD)
 - `outputs/` —— 本地存档目录（不进版本库）
-- `scripts/` —— 桌面端重建脚本
+- `scripts/` —— 开发者用的桌面端重建脚本
+- `desktop-button/` —— **给别人装桌面按钮的自描述安装包**（见下一节）
 - `web/local_config.json` —— 本机 key 配置（不进版本库，用 `local_config.example.json` 当模板）
+
+## 给别人装桌面按钮（拖进 AI Agent）
+
+如果你想把 Character 发给朋友 / 同事，让他们也能「双击桌面按钮就用」，不用教他们敲命令：
+
+1. 把仓库里的 **`desktop-button/`** 这个文件夹交给对方的 AI Agent（WorkBuddy、Claude Code、Cursor 等都可以）。
+   - 在 WorkBuddy 里直接把这个文件夹拖进对话、或说「帮我装 Character 桌面按钮」即可。
+2. AI Agent 会读 `desktop-button/AGENT.md`，自动找到 Character 项目，然后在**对方桌面**生成：
+   - **macOS**：`Character.app`（阴阳鱼图标，双击启动本地服务并开浏览器）
+   - **Windows**：桌面 `Character.lnk` 快捷方式（同样自动起服务、开浏览器）
+3. 对方以后双击桌面上的 Character 就能打开 `http://localhost:8787/app` 使用。
+
+> 前提：对方电脑装了 Python 3（macOS 自带；Windows 需自行安装并勾选加入 PATH）。
+> 按钮图标统一用 `desktop-button/icon.png`（阴阳鱼 logo）。安装器零第三方依赖，纯标准库。

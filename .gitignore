@@ -10,6 +10,12 @@ outputs/
 # ===== 桌面应用包（二进制 + 本机路径依赖，由 scripts/ 重建）=====
 Character.app/
 
+# ===== 桌面按钮安装器运行时生成的文件（desktop-button/setup.py 产出，不进版本库）=====
+character-icon.png
+character-icon.ico
+character-launch.bat
+character-server.log
+
 # ===== 日志 =====
 character-server.log
 *.log
