@@ -1,6 +1,6 @@
 # Character 桌面按钮安装包（给 AI Agent 看的自描述清单）
 
-> 这是一个**自描述**的安装包：任何能运行命令的 AI Agent（WorkBuddy、ChatGPT、Claude Code、Cursor 等）
+> 这是一个**自描述**的安装包：任何**能在本机执行命令**的 AI Agent（WorkBuddy、Claude Code、Cursor 等，纯网页聊天版无法操作你的电脑）
 > 只要读到这个文件夹，就知道该怎么帮用户在**桌面**上装出一个叫 **Character** 的按钮。
 
 ---

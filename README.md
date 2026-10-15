@@ -30,7 +30,7 @@ cd web && python3 server.py
 
 双击桌面 Character 即可使用，不用敲命令。两种装法任选其一：
 
-- **拖进 AI Agent（推荐，Mac / Windows 通用）**：把 `desktop-button/` 文件夹交给 AI Agent（WorkBuddy、ChatGPT、Claude Code、Cursor 等都可以），说「帮我装 Character 桌面按钮」。Agent 会读 `desktop-button/AGENT.md`，自动在你桌面生成带阴阳鱼图标的按钮。
+- **拖进 AI Agent（推荐，Mac / Windows 通用）**：把 `desktop-button/` 文件夹交给一个**能在你电脑上执行命令**的 AI Agent（WorkBuddy、Claude Code、Cursor 等都可以，纯网页聊天版做不到），说「帮我装 Character 桌面按钮」。Agent 会读 `desktop-button/AGENT.md`，自动在你桌面生成带阴阳鱼图标的按钮。
 - **命令行（仅 Mac）**：`bash scripts/build-macos-app.sh`
 
 ## 目录结构
