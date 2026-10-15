@@ -522,58 +522,6 @@ button { font-family: inherit; cursor: pointer; }
 /* ============================================================
    右侧任务栏（首次存档后滑出）
    ============================================================ */
-.taskbar { width: 0; overflow: hidden; background: var(--surface-2); border-left: 0 solid var(--line); transition: width .25s ease; position: relative; z-index: 30; }
-.taskbar.open { width: 332px; border-left: 1px solid var(--line); }
-
-/* 右侧任务栏唤醒热区：与左侧 #edge 同一套机制 —— 平时透明贴右缘，鼠标一进去任务栏滑出。
-   展开后任务栏盖在热区上（z-index 30 > 29），热区随即收不到事件，改由任务栏自身的 mouseleave 收起 */
-#tbZone { position: fixed; right: 0; top: 0; bottom: 0; width: 14px; z-index: 29; background: transparent; }
-.tb-inner { width: 332px; height: 100%; display: flex; flex-direction: column; }
-.tb-head { font-family: var(--font-content); padding: 20px 16px 12px; font-size: 18px; color: var(--ink-400); letter-spacing: .04em; }
-.tb-list { flex: 1; overflow-y: auto; padding: 12px; position: relative; }
-/* —— Pretext 虚拟滚动：撑高占位 + 绝对定位的可见卡片 —— */
-.tb-spacer { position: relative; width: 100%; }
-.tcard.virtual { position: absolute; left: 0; right: 0; margin: 0; }
-
-.tcard { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 14px 15px; margin-bottom: 10px; box-shadow: var(--shadow-sm); }
-.tcard-head { display: flex; align-items: baseline; gap: 8px; cursor: pointer; }
-/* 卡片信息区（标题/时间/标签/复制按钮/摘要/md 折叠标题）统一普通正文字体，代码块除外；书写框仍用手写体 */
-.tcard-title { font-family: var(--font-body); font-size: var(--fs-content); font-weight: 600; color: var(--ink-700); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ttime { font-family: var(--font-body); font-size: calc(var(--fs-content) - 2px); color: var(--ink-300); flex: none; }
-/* 折叠 / 展开指示器：平时收起只显标题，点一下展开看分类与文件格式 */
-.tcaret { flex: none; font-size: calc(var(--fs-content) - 6px); color: var(--ink-300); line-height: 1; margin-left: 2px; transition: transform .15s ease; }
-.tcard-meta { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0 2px; }
-
-.chip { font-family: var(--font-body); font-size: calc(var(--fs-content) - 2px); border-radius: 6px; padding: 1px 8px; background: var(--surface-2); color: var(--ink-600); border: 1px solid var(--line); }
-.chip.ok  { background: var(--ink-950); color: var(--on-strong); border-color: var(--ink-950); }
-.chip.bad { background: var(--surface); color: var(--ink-950); border-color: var(--ink-950); }
-.chip.cat { background: var(--surface-2); color: var(--ink-600); }
-
-/* 分类标签后面的复制按钮：一键复制这条记录的 md（字号/内边距/边框与 chip 一致，行高不变） */
-/* JEV 归类比例：展开卡片时展示各类别的真实概率（替代 MOCK 占位总结） */
-.tprobs { margin-top: 8px; }
-.tprob-row {
-  display: flex; align-items: center; gap: 8px;
-  font-family: var(--font-script), var(--font-body); font-size: calc(var(--fs-content) - 6px);
-  color: var(--ink-500); line-height: 1.5;
-}
-.tprob-name { flex: none; width: 8em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tprob-bar { flex: 1; height: 6px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); overflow: hidden; }
-.tprob-bar > i { display: block; height: 100%; background: var(--ink-500); }
-.tprob-pct { flex: none; width: 3.6em; text-align: right; }
-
-/* 文件格式：展开后显示记录类型 + 落地文件（raw.md / summary.md） */
-
-.tsummary { font-family: var(--font-body); font-size: calc(var(--fs-content) - 1px); color: var(--ink-700); margin-top: 8px; white-space: pre-wrap; line-height: 1.6; }
-.terr { font-family: var(--font-content); font-size: calc(var(--fs-content) - 2px); color: var(--ink-950); margin-top: 6px; }
-.tcard details { margin-top: 8px; }
-.tcard summary { font-family: var(--font-body); font-size: calc(var(--fs-content) - 2px); color: var(--ink-400); cursor: pointer; }
-/* 代码块：唯一不跟手写体、也不跟「字号大小」的固定字号（用户明确要求代码部分不变） */
-.tcard pre {
-  background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-sm);
-  padding: 10px; font-family: var(--font-mono); font-size: 12px; line-height: 1.5;
-  overflow: auto; margin-top: 6px; white-space: pre-wrap; word-break: break-word; color: var(--ink-700);
-}
 
 /* —— 总结面板（点「总结」后弹出） —— */
 .summary-modal { max-width: 560px; width: calc(100% - 40px); }

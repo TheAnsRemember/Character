@@ -148,10 +148,7 @@ function resolveMode() {
 function addTask(t, quiet) {
   tasks.push(t);
   saveTasks();
-  // quiet：只落进左侧工作区，不弹右侧任务栏（simple note / 纯记录用）
-  const justOpened = quiet ? false : openTaskbar(true); // 存档后滑出任务栏；鼠标 4 秒内没进来会自动收回
   renderWorkspace();
-  if (!justOpened) scheduleVirtual(0); // 已开着就立即重算
 }
 
 async function archive(modeOverride) {
@@ -350,7 +347,6 @@ async function fillProbs(t) {
     t.conf = r.skill_confidence;
     t.probsSource = (d.mode && d.mode.jev) || mode.jev;
     saveTasks();
-    scheduleVirtual(0);                // 高度变了，重算虚拟滚动
   } catch { /* 补算失败就当没有，不影响阅读 */ }
 }
 
@@ -389,137 +385,14 @@ function buildCard(task) {
   card.addEventListener('click', (e) => {
     if (e.target.closest('details, button, a, input')) return;
     if (openCards.has(task.ts)) openCards.delete(task.ts); else openCards.add(task.ts);
-    scheduleVirtual(0);
   });
   return card;
 }
 
-/* ============================================================
-   虚拟滚动（Pretext 量文字高度，只渲染视口内的卡片）
-   ——— 用一次 DOM 探针量「固定部件」（标题/标签/内边距/边框），
-       可变部分（正文、报错、md 折叠块）交给 Pretext 纯计算。
-   ============================================================ */
-const TB_GAP = 10;      // 卡片间距（原 .tcard margin-bottom）
-const TB_PAD = 12;      // .tb-list 内边距
-const V_BUF  = 600;     // 视口上下各多渲染的缓冲像素
-
-/* —— 测量用的字体/行高必须与 app.css 严格对齐，否则算出的卡片高度是错的（表现为重叠或空档）
-     CSS 依据：.tsummary font-size: calc(--fs-content - 1px)  line-height 1.6
-               .terr     font-size: calc(--fs-content - 2px)  line-height 1.65（继承 body）
-               .tcard pre font-size: 12px 固定               line-height 1.5
-     卡片里的字用的是手写体（--font-content），所以测量也必须用它，不能用 PingFang。 */
+/* —— 书法体 → CSS font-family 名映射（供输入框、卡片等处引用） —— */
 const CALLI_FONTS = { lishu: 'ZCOOL XiaoWei', kaishu: 'Ma Shan Zheng', caoshu: 'Liu Jian Mao Cao', xingshu: 'Zhi Mang Xing' };
-function measureStack() {                        // 书法体可切换，测量字体必须跟着换，否则卡片高度算错
-  return '"Dancing Script", "' + (CALLI_FONTS[getSet('calli')] || 'Zhi Mang Xing') + '", "PingFang SC"';
-}
-const MD_SIZE = 12;                              // 代码块固定字号（不跟「字号大小」）
-const LH_MD = MD_SIZE * 1.5;
-const F_MD = MD_SIZE + 'px Menlo';
-let LH_SUMMARY = 0, LH_ERROR = 0, F_SUMMARY = '', F_ERROR = '';
-function syncMeasureFonts() {
-  const n = getSet('size');                      // 记录内容基准字号
-  const stack = measureStack();
-  LH_SUMMARY = (n - 1) * 1.6;
-  LH_ERROR   = (n - 2) * 1.65;
-  F_SUMMARY  = (n - 1) + 'px ' + stack;
-  F_ERROR    = (n - 2) + 'px ' + stack;
-}
 
-let dispTasks = [];            // 显示序（最新在上）
-let cardHeights = [], cardTops = [], vTimer = null, rafPending = false;
-let _chrome = null;            // 固定部件高度（探针一次量出）：收起态只有标题行
-let _metaH = null, _probRowH = null;   // 展开态才叠加：标签行 / 比例行高度
 let highlightTs = null;        // 需要高亮的记录（做成状态，重渲染时自动补上）
-
-/* Pretext 量一段文字在给定宽度下的高度；失败则退化为粗估，避免整体崩 */
-function textHeight(text, font, width, lh, opts) {
-  if (!text) return 0;
-  try { return layout(prepare(text, font, opts), width, lh).height; }
-  catch { return Math.ceil(text.length / Math.max(1, Math.floor(width / 13))) * lh; }
-}
-
-/* 量「固定部件」：收起态整卡只有标题行（含卡片 padding+border）；展开态再叠加 标签(meta)
-   文件类型 chip 也在 meta 行内一起量。避免漏掉卡片自身的上下内边距与边框（漏了会整片漂 30px）。 */
-function measureChrome(container, contentW) {
-  if (_chrome != null && _metaH != null && _probRowH != null) return;
-  // 收起态：整卡只放 head —— _chrome 含卡片 padding(14*2) + border(1*2) + 标题行
-  const cardP = document.createElement('div');
-  cardP.className = 'tcard';
-  cardP.style.cssText = 'position:absolute;left:0;right:0;visibility:hidden;';
-  cardP.innerHTML = '<div class="tcard-head"><div class="tcard-title">测</div><div class="ttime">00:00:00</div><span class="tcaret">▸</span></div>';
-  container.appendChild(cardP);
-  _chrome = cardP.offsetHeight;
-  container.removeChild(cardP);
-  // meta / filefmt 各自高度（展开态叠加，offsetHeight 不含自身 margin，由 estimateHeight 手动加 margin）
-  const metaP = document.createElement('div');
-  metaP.className = 'tcard-meta';
-  metaP.style.cssText = 'position:absolute;left:0;visibility:hidden;width:' + contentW + 'px;';
-  metaP.innerHTML = '<span class="chip ok">已总结</span><span class="chip cat">分类：x</span><span class="chip">文件类型：MD文件</span>';
-  container.appendChild(metaP); _metaH = metaP.offsetHeight; container.removeChild(metaP);
-  const probP = document.createElement('div');       // 比例区：一行的高度（每类一行，行高相同）
-  probP.className = 'tprob-row';
-  probP.style.cssText = 'position:absolute;left:0;visibility:hidden;';
-  probP.innerHTML = '<span class="tprob-name">existing_project</span><span class="tprob-bar"><i style="width:50%"></i></span><span class="tprob-pct">50.0%</span>';
-  container.appendChild(probP); _probRowH = probP.offsetHeight; container.removeChild(probP);
-}
-
-function estimateHeight(t, contentW) {
-  let h = _chrome;                                   // 收起态：只有标题行
-  if (openCards.has(t.ts)) {                         // 展开态：叠加 meta + 文件格式 + 正文/报错/md
-    h += 8 + _metaH;                                 // meta 的 margin-top(8) + 标签高度
-    if (t.probs) h += 8 + Object.keys(t.probs).length * _probRowH;   // JEV 归类比例（每类一行）
-    const sum = realSummary(t);
-    if (sum) h += 8 + textHeight(sum, F_SUMMARY, contentW, LH_SUMMARY);
-    if (t.error)   h += 6 + textHeight('⚠ ' + t.error, F_ERROR, contentW, LH_ERROR);
-  }
-  return Math.ceil(h);
-}
-
-function scheduleVirtual(delay) { clearTimeout(vTimer); vTimer = setTimeout(refreshVirtual, delay || 0); }
-
-function refreshVirtual() {
-  const list = $('tbList');
-  dispTasks = [...tasks].reverse();
-  if (!dispTasks.length) { list.innerHTML = ''; list.__spacer = null; cardTops = []; return; }
-  const w = list.clientWidth;
-  if (w < 60) return;                               // 任务栏还在滑出（宽度未知），等下次
-
-  list.innerHTML = '';
-  const spacer = document.createElement('div');
-  spacer.className = 'tb-spacer';
-  list.appendChild(spacer);
-  list.__spacer = spacer;
-
-  const contentW = w - TB_PAD * 2 - 30 - 2;         // 去内边距 + 卡片 padding + 边框
-  measureChrome(spacer, contentW);                  // 先量固定部件（按真实可用宽度量，标签换行才准）
-  cardHeights = dispTasks.map(t => estimateHeight(t, contentW));
-  cardTops = []; let y = 0;
-  for (let i = 0; i < cardHeights.length; i++) { cardTops.push(y); y += cardHeights[i] + TB_GAP; }
-  spacer.style.height = y + 'px';
-  renderVisible();
-}
-
-function renderVisible() {
-  const list = $('tbList'), spacer = list.__spacer;
-  if (!spacer) return;
-  const n = dispTasks.length;
-  const lo = list.scrollTop - V_BUF, hi = list.scrollTop + list.clientHeight + V_BUF;
-  let first = 0;
-  while (first < n && cardTops[first] + cardHeights[first] < lo) first++;
-  let last = first;
-  while (last < n && cardTops[last] < hi) last++;
-
-  const frag = document.createDocumentFragment();
-  for (let i = first; i < last; i++) {
-    const card = buildCard(dispTasks[i]);
-    card.classList.add('virtual');
-    card.style.top = cardTops[i] + 'px';
-    if (dispTasks[i].ts === highlightTs) card.style.outline = '2px solid var(--ink-950)';  // 高亮跟随重渲染
-    frag.appendChild(card);
-  }
-  spacer.innerHTML = '';
-  spacer.appendChild(frag);
-}
 
 /* —— 侧栏归类（WorkBuddy 逻辑：任务 + 空间）——
    任务：所有记录按时间倒排成一条清单，一条记录 = 一个任务；
@@ -720,7 +593,6 @@ function moveTaskToSpace(ts, key) {
   t.category = key;
   saveTasks();
   renderWorkspace();                        // 侧栏两边（任务清单 + 空间）都重排
-  scheduleVirtual(0);                       // 右侧任务栏卡片的分类 chip 跟着变
 }
 
 let pendingDeleteTs = null;                    // 正在等待删除确认的记录 ts（一次只有一条）
@@ -730,7 +602,6 @@ function deleteTask(ts) {
   pendingDeleteTs = null;
   if (highlightTs === ts) highlightTs = null;
   renderWorkspace();                           // 左侧列表少一条
-  scheduleVirtual(0);                          // 任务栏同步少一张（关着时会跳过，弹出时 openTaskbar 会再排）
 }
 
 function focusTask(ts) {
@@ -959,7 +830,6 @@ function applyI18n(lang) {
   });
   document.documentElement.lang = lang === 'en' ? 'en' : 'zh-CN';
   renderWorkspace();                 // 分组名 / 状态标签也要跟着换
-  scheduleVirtual(0);                // 文案长度变了 → 卡片高度重算
 }
 function pickLang(lang) {
   setSet('lang', lang);
@@ -990,12 +860,6 @@ function applyCalli(v) {
   if (bar) bar.querySelectorAll('.calli-btn').forEach(b => b.classList.toggle('on', b.dataset.calli === v));
   const inp = $('input');                       // 切换动效：重放一次淡入
   if (inp) { inp.classList.remove('calli-switch'); void inp.offsetWidth; inp.classList.add('calli-switch'); }
-  syncMeasureFonts();                                // 书法体换了，测量字体跟着换
-  _chrome = _metaH = _probRowH = null;   // 探针作废（不同字体行高/宽度不同）
-  scheduleVirtual(0);
-  if (document.fonts && document.fonts.ready) {
-    document.fonts.ready.then(() => scheduleVirtual(0));  // 字体真正就位后再量一次，防止换行算错
-  }
 }
 
 
@@ -1077,7 +941,6 @@ applyTheme(getSet('theme'));
 syncAppearCards(getSet('theme'));
 document.documentElement.style.setProperty('--fs-content', getSet('size') + 'px');
 applyCalli(getSet('calli'));         // 恢复上次的书法体（隶/楷/草/行）
-syncMeasureFonts();
 applyI18n(getSet('lang'));
 syncServerKeys();                    // 本机配置的 key 同步进设置面板（异步，失败不影响启动）
 
@@ -1098,8 +961,6 @@ if (document.fonts && document.fonts.ready) {
       const v = tr(el.dataset.i18nPlaceholder);
       if (v != null) { el.placeholder = ''; el.placeholder = v; }
     });
-    _chrome = _metaH = _probRowH = null;
-    scheduleVirtual(0);
   });
 }
 
@@ -1129,45 +990,17 @@ document.addEventListener('click', (e) => {
 /* 菜单开着时滚动侧栏会脱锚，直接关掉 */
 $('wsList').addEventListener('wheel', () => { if ($('wsMoveMenu')) $('wsMoveMenu').remove(); }, { passive: true });
 
-/* 右侧任务栏：同一套「贴边热区弹出 / 移开收起」机制。
-   展开后任务栏（z-index 30）盖住热区（29），此时热区收不到事件，由任务栏自己的 mouseleave 收起 */
-const tbEl = $('taskbar'), tbZoneEl = $('tbZone');
-let tbHideTimer = null, tbAutoCloseTimer = null;
-function openTaskbar(stayOpen) {
-  clearTimeout(tbHideTimer);
-  clearTimeout(tbAutoCloseTimer);        // 鼠标只要进来，就交回给 mouseleave 管
-  const wasClosed = !tbEl.classList.contains('open');
-  tbEl.classList.add('open');
-  if (wasClosed) scheduleVirtual(320);   // 刚滑出：等宽度动画结束再量宽算高（宽为 0 时 refreshVirtual 会跳过）
-  /* 程序性打开（存档反馈 / 点左侧记录）：鼠标可能始终不在任务栏上，mouseleave 永远不会来 ——
-     4 秒内鼠标没进来就自动收起，回到“平时收起”的状态 */
-  if (stayOpen) {
-    tbAutoCloseTimer = setTimeout(() => { if (!tbEl.matches(':hover')) tbEl.classList.remove('open'); }, 4000);
-  }
-  return wasClosed;
-}
-function closeTaskbar() { tbHideTimer = setTimeout(() => tbEl.classList.remove('open'), 160); }
-
-/* —— 贴边唤起：改成「鼠标坐标」判定，不再用 mouseenter/mouseleave ——
-   原来的坑：面板滑出后会盖住贴边热区（侧栏 248px / 任务栏 332px，z-index 30 > 热区 29）。
-   鼠标停在边缘不动时，滑过来的面板不算"鼠标进入"（收不到 mouseenter），
-   热区却先触发了 mouseleave → 面板刚开就被收起，必须挪出去再进来一次才留得住。
-   坐标判定与层叠无关：鼠标在边缘带内就开，离开「面板宽度 + 宽容度」才收，一次到位。 */
+/* —— 贴边唤起（左侧栏）：鼠标坐标判定，与层叠无关 ——
+   原来的坑：面板滑出后会盖住贴边热区，鼠标停在边缘不动时收不到 mouseenter，
+   导致面板刚开就被收起，必须挪出去再进来一次才留得住。
+   坐标判定：鼠标在边缘带内就开，离开「面板宽度 + 宽容度」才收。 */
 const EDGE_W = 20;        // 贴边敏感带（比原来的 14px 热区略宽，更好碰到）
 const SIDEBAR_W = 248;    // 与 .sidebar width 一致
-const TASKBAR_W = 332;    // 与 .taskbar.open width 一致
 const KEEP_GRACE = 40;    // 越界宽容：刚移出面板边界不立刻收，避免来回抖
-let tbHoverOpened = false;   // 任务栏是「鼠标贴边」开的不（区别于存档后程序性弹出）
 window.addEventListener('mousemove', (e) => {
-  const x = e.clientX, w = window.innerWidth;
+  const x = e.clientX;
   if (x <= EDGE_W) { openSidebar(); }
   else if (sidebarEl.classList.contains('open') && x > SIDEBAR_W + KEEP_GRACE) { closeSidebar(); }
-
-  if (x >= w - EDGE_W) { tbHoverOpened = true; openTaskbar(); }
-  else if (tbHoverOpened && tbEl.classList.contains('open') && x < w - TASKBAR_W - KEEP_GRACE) {
-    tbHoverOpened = false;
-    closeTaskbar();
-  }
 }, { passive: true });
 
 $('input').addEventListener('input', e => { e.target.scrollTop = e.target.scrollHeight; });  // 写长上方滚出视野
@@ -1182,13 +1015,6 @@ document.addEventListener('keydown', e => {        // DSH 同款：ESC 逐层关
   hidePermAsk();
 });
 renderWorkspace();
-scheduleVirtual(0);   // 任务栏平时收起，鼠标贴右缘热区才弹出；弹出那一刻 openTaskbar 会再排一次重算
-$('tbList').addEventListener('scroll', () => {      // 滚动 → 只重渲染可见卡片
-  if (rafPending) return;
-  rafPending = true;
-  requestAnimationFrame(() => { rafPending = false; renderVisible(); });
-}, { passive: true });
-window.addEventListener('resize', () => { _chrome = _metaH = _probRowH = null; scheduleVirtual(0); });  // 宽度变了要重算高度
 $('input').focus();
 
 /* 模块化（type="module"）后，HTML 内联 onclick 仍需要这些函数挂在 window 上 */
