@@ -35,11 +35,14 @@ cd web && python3 server.py
   - **Mac 用户**安装时若愿意输一次开机密码，按钮会打开体面的 `http://character.test/app`（本地域名，无需看 `localhost` 和数字端口）；否则自动退回 `http://localhost:8787/app`。
 - **命令行（仅 Mac）**：`bash scripts/build-macos-app.sh`
 
+👉 给最终用户的**图文版安装 / 使用说明书**见仓库根目录的 **`安装说明.md`**（含 Windows、填密钥、开 `character.test`、`/etc/hosts` 清理等常见问题）。
+
 ## 目录结构
 
 - `web/` —— 前端界面（`app.html / app.js / app.css`）、本地服务（`server.py`，端口 8787）、书法字体
 - `router/` —— 后端管线：分类 / 总结 / 抽取 / 写 MD
 - `desktop-button/` —— 跨平台桌面按钮安装包（含给 AI Agent 看的 `AGENT.md`）
+- `安装说明.md` —— 给最终用户的中文图文安装 / 使用说明书（不懂技术也能照着做）
 - `scripts/` —— 开发者用的 Mac 桌面端重建脚本
 - `outputs/` —— 本地存档（不进版本库）
 - `web/local_config.json` —— 本机密钥配置（不进版本库，用 `local_config.example.json` 当模板）

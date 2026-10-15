@@ -63,6 +63,7 @@ Character 是一个本地写作 + AI 分类/总结的小工具，本体是一个
 | `build-windows.ps1` | Windows 专用：由 `setup.py` 调用，负责建桌面快捷方式和启动器 |
 | `macos-proxy.py` | macOS 专用：纯标准库 TCP 转发器（80 端口 → 8787），实现 `character.test` 域名，作为系统守护进程常驻 |
 | `com.character.proxy.plist` | macOS 专用：上面转发器的 launchd 守护进程配置模板（开机自启 + 崩溃自动重启） |
+| `../安装说明.md` | 给**最终用户**看的中文图文安装/使用说明书（Agent 可把它转交给用户，或引导用户照着做） |
 
 ---
 
