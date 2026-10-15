@@ -4,7 +4,7 @@
      1) 配置 / 状态   —— 常量、localStorage 键、单一数据源 tasks
      2) 工具          —— creds / nowTime
      3) API 层        —— callProcess：唯一取数入口，契约稳定独立
-     4) 状态变更      —— snOn 开关 / addTask / archive（按权限分流）
+     4) 状态变更      —— addTask / archive（按权限分流）
      5) 渲染层        —— buildCard / renderTaskbar / renderWorkspace（组件化）
      6) 视图 / 输入   —— newCapture / 自动滚底
      7) 设置          —— 主题 / 语言 / 字号 / 权限（四行全部真生效）
@@ -118,27 +118,17 @@ async function callClassify(text) {
 }
 
 /* ---------- 4) 状态变更 ---------- */
-let snOn = false;   // simple note 开关：开=纯记录(archive_only)，关=走权限判断
-
-function toggleCreate() {
-  snOn = !snOn;
-  const sw = $('snSwitch');
-  sw.classList.toggle('on', snOn);
-  sw.setAttribute('aria-checked', String(snOn));
-}
 
 /* —— 权限询问条（权限 =「每次询问」时出现）—— */
 function showPermAsk() { $('permAsk').classList.add('show'); }
 function hidePermAsk() { $('permAsk').classList.remove('show'); }
 
-/* 权限决定「存档」按钮走哪条路：
-     simple note 开 → 纯记录（用户显式表态，优先级最高）
-     只读           → 纯记录，绝不调外部服务
-     每次询问       → 先问一次，再按用户点的那颗按钮走
-     完全权限       → 直接调 AI 处理
+/* 权限决定「存档」按钮走哪条路（由设置里的「权限」决定）：
+     只读       → 纯记录，绝不调外部服务
+     每次询问   → 先问一次，再按用户点的那颗按钮走
+     完全权限   → 直接调 AI 处理
    modeOverride 由询问条上的按钮传入（'full' / 'archive_only'）。 */
 function resolveMode() {
-  if (snOn) return 'archive_only';
   const perm = getSet('perm');
   if (perm === 'readonly') return 'archive_only';
   if (perm === 'ask') return 'ask';
@@ -735,7 +725,6 @@ const I18N = {
     project: '项目（可选）',
     archive: '存档',
     taskbarHead: '任务栏 · 已存档 / 处理状态',
-    snLabel: '简单随笔',
 
     settingsTitle: '设置',
     openConfig: '打开配置文件',
@@ -804,7 +793,6 @@ const I18N = {
     project: 'Project (optional)',
     archive: 'Archive',
     taskbarHead: 'Taskbar · archived / processing status',
-    snLabel: 'simple note',
 
     settingsTitle: 'Settings',
     openConfig: 'Open config file',
@@ -1117,7 +1105,7 @@ $('input').focus();
 
 /* 模块化（type="module"）后，HTML 内联 onclick 仍需要这些函数挂在 window 上 */
 Object.assign(window, {
-  newCapture, toggleCreate, archive, summarize, copyInput,
+  newCapture, archive, summarize, copyInput,
   toggleMic, stopMic,
   showSummaryPanel, closeSummary, copySummary,
   openSettings, closeSettings, switchSetTab,
