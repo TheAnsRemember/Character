@@ -17,8 +17,7 @@ from urllib.parse import urlparse
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-sys.path.insert(0, ROOT)
-sys.path.insert(0, HERE)  # 让 web/router 也能被直接 import（独立部署时 router 已复制到 web/ 内）
+sys.path.insert(0, ROOT)  # 让根目录 router/ 能被直接 import
 
 from router.route import route, needs_summary
 from router.summarizer import summarize
