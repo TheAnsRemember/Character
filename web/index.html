@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>内容总结 Agent · 调试 Playground</title>
+<style>
+  :root { --bg:#f6f7fb; --card:#fff; --line:#e5e7eb; --ink:#1f2430; --mut:#6b7280;
+          --acc:#8b6ce0; --ok:#16a34a; --warn:#d97706; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
+         background:var(--bg); color:var(--ink); }
+  .wrap { max-width:960px; margin:0 auto; padding:24px 18px 60px; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  .sub { color:var(--mut); margin:0 0 20px; font-size:13px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:16px; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  @media(max-width:640px){ .grid{ grid-template-columns:1fr; } }
+  label { display:block; font-size:12px; color:var(--mut); margin:0 0 4px; }
+  input, textarea { width:100%; border:1px solid var(--line); border-radius:8px; padding:8px 10px;
+                    font:inherit; color:var(--ink); background:#fff; }
+  input:focus, textarea:focus { outline:2px solid var(--acc); outline-offset:0; border-color:var(--acc); }
+  textarea { min-height:120px; resize:vertical; }
+  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  button { background:var(--acc); color:#fff; border:0; border-radius:8px; padding:10px 20px;
+           font:600 14px/1 inherit; cursor:pointer; }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  .badge { display:inline-block; padding:2px 10px; border-radius:999px; font-size:12px; font-weight:600; }
+  .badge.real { background:#dcfce7; color:#166534; }
+  .badge.mock { background:#fef3c7; color:#92400e; }
+  .badge.acc { background:#ede9fe; color:#6d28d9; }
+  .sec-title { font-size:13px; font-weight:700; margin:0 0 8px; color:var(--mut); text-transform:uppercase; letter-spacing:.04em; }
+  .pbar { height:8px; background:#eef0f4; border-radius:999px; overflow:hidden; margin:2px 0 6px; }
+  .pbar > i { display:block; height:100%; background:var(--acc); }
+  .kv { display:flex; gap:8px; margin:2px 0; }
+  .kv b { min-width:88px; color:var(--mut); font-weight:600; }
+  pre { background:#0f172a; color:#e2e8f0; border-radius:10px; padding:14px; overflow:auto; font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; }
+  .err { color:#b91c1c; }
+  .tag { display:inline-block; background:#ede9fe; color:#6d28d9; border-radius:6px; padding:1px 8px; margin:2px 4px 2px 0; font-size:12px; }
+  .hint { color:var(--mut); font-size:12px; margin-top:6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>内容总结 Agent · 调试 Playground</h1>
+  <p class="sub">贴一段想法 → 看 JEV 分类 / 是否要 LLM / OpenAI 总结 / 生成的 md。拿你自己的 key 调接口，纯调试入口。</p>
+
+  <div class="card">
+    <div class="grid">
+      <div><label>JEV key（TypeSafe）</label><input id="jev_key" type="password" placeholder="留空=走 mock" /></div>
+      <div><label>OpenAI key</label><input id="openai_key" type="password" placeholder="留空=总结走 mock" /></div>
+      <div><label>OpenAI base_url</label><input id="llm_base" value="https://api.openai.com/v1" /></div>
+      <div><label>OpenAI model</label><input id="llm_model" value="gpt-4o-mini" /></div>
+      <div><label>need_llm 阈值（≥此值才总结）</label><input id="threshold" type="number" step="0.05" value="0.7" /></div>
+    </div>
+    <div style="margin-top:12px"><label>你的想法 / 内容</label>
+      <textarea id="text" placeholder="例如：明天要记得给张总发项目报价单，还有把周报填了……"></textarea>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button id="run" onclick="run()">运行管线</button>
+      <span id="status"></span>
+    </div>
+    <div class="hint">提示：JEV key 留空则分类走 mock（启发式，不准）；填入真 key 才走真实 JEV。两个 key 只在本次请求里使用，不会存到任何文件。</div>
+  </div>
+
+  <div class="card" id="out" style="display:none">
+    <div class="row" style="margin-bottom:12px">
+      <span class="sec-title" style="margin:0">运行状态</span>
+      <span id="b_jev" class="badge"></span>
+      <span id="b_llm" class="badge"></span>
+    </div>
+
+    <p class="sec-title">① 分类结果（JEV Choice）</p>
+    <div class="kv"><b>类别</b><span id="skill"></span></div>
+    <div class="kv"><b>置信度</b><span id="conf"></span></div>
+    <div id="probs"></div>
+
+    <p class="sec-title" style="margin-top:14px">② 是否需要 LLM 总结（JEV Noul）</p>
+    <div class="kv"><b>LLM 概率</b><span id="noul"></span></div>
+    <div class="kv"><b>阈值</b><span id="thr"></span></div>
+    <div class="kv"><b>决策</b><span id="dec"></span></div>
+
+    <p class="sec-title" style="margin-top:14px">③ 产出</p>
+    <div id="summary_box" style="display:none">
+      <div class="kv"><b>LLM 总结</b></div>
+      <pre id="summary"></pre>
+    </div>
+    <div id="tags_box" style="display:none">
+      <div class="kv"><b>JEV 标签</b></div>
+      <div id="tags"></div>
+    </div>
+    <div class="kv"><b>生成 md</b></div>
+    <pre id="md"></pre>
+  </div>
+</div>
+
+<script>
+async function run() {
+  const btn = document.getElementById('run');
+  btn.disabled = true;
+  const st = document.getElementById('status');
+  st.textContent = '运行中…';
+  const payload = {
+    text: document.getElementById('text').value,
+    jev_key: document.getElementById('jev_key').value,
+    openai_key: document.getElementById('openai_key').value,
+    llm_base: document.getElementById('llm_base').value,
+    llm_model: document.getElementById('llm_model').value,
+    threshold: document.getElementById('threshold').value,
+  };
+  // 顺手把配置存进本机 localStorage（仅浏览器本地，同源给 /app 复刻页共用）
+  try {
+    localStorage.setItem('jev_key', payload.jev_key);
+    localStorage.setItem('openai_key', payload.openai_key);
+    localStorage.setItem('llm_base', payload.llm_base);
+    localStorage.setItem('llm_model', payload.llm_model);
+    localStorage.setItem('threshold', payload.threshold);
+  } catch(e) {}
+  try {
+    const res = await fetch('/api/process', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) { st.innerHTML = '<span class="err">错误：'+(data.error||res.status)+'</span>'; return; }
+    render(data);
+    st.textContent = '完成';
+  } catch(e) {
+    st.innerHTML = '<span class="err">请求失败：'+e+'</span>';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function render(d) {
+  document.getElementById('out').style.display = 'block';
+  const m = d.mode || {};
+  setBadge('b_jev', 'JEV ' + (m.jev==='real'?'真实':'MOCK'), m.jev==='real'?'real':'mock');
+  setBadge('b_llm', 'LLM ' + (m.llm==='real'?'真实':'MOCK'), m.llm==='real'?'real':'mock');
+
+  const r = d.route || {};
+  document.getElementById('skill').textContent = r.final_skill + (r.fallback?'（低置信兜底）':'');
+  document.getElementById('conf').textContent = (r.skill_confidence??0).toFixed(3);
+  const pb = document.getElementById('probs'); pb.innerHTML = '';
+  const probs = r.skill_probabilities || {};
+  Object.entries(probs).sort((a,b)=>b[1]-a[1]).forEach(([k,v])=>{
+    const pct = (v*100).toFixed(1);
+    pb.insertAdjacentHTML('beforeend',
+      `<div style="display:flex;gap:8px;align-items:center"><span style="min-width:130px">${k}</span>`+
+      `<span class="pbar" style="flex:1"><i style="width:${pct}%"></i></span><span>${pct}%</span></div>`);
+  });
+
+  document.getElementById('noul').textContent = (r.need_llm_score??0).toFixed(3);
+  document.getElementById('thr').textContent = (document.getElementById('threshold').value);
+  const dec = document.getElementById('dec');
+  if (r.needs_llm) { dec.innerHTML = '<span class="badge acc">走 LLM 总结</span>'; }
+  else { dec.innerHTML = '<span class="badge mock">不总结 · 原样存档</span>'; }
+
+  const sb = document.getElementById('summary_box');
+  if (d.summary) { sb.style.display='block'; document.getElementById('summary').textContent = d.summary; }
+  else sb.style.display='none';
+
+  const tb = document.getElementById('tags_box');
+  if (d.extra_fields && d.extra_fields.tags) {
+    tb.style.display='block';
+    document.getElementById('tags').innerHTML = d.extra_fields.tags.map(t=>`<span class="tag">${t}</span>`).join('');
+  } else tb.style.display='none';
+
+  document.getElementById('md').textContent = d.md || '';
+}
+function setBadge(id, text, kind){ const e=document.getElementById(id); e.textContent=text; e.className='badge '+kind; }
+</script>
+</body>
+</html>

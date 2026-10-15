@@ -1,0 +1,20 @@
+{
+  "_comment": "复制本文件为 local_config.json 并填入你的 key；local_config.json 已被 .gitignore 忽略，不会提交。网页设置里留空时会用这里的 key。",
+  "jev_key": "",
+  "openai_key": "",
+  "connector": {
+    "_comment": "自定义连接器：把摘要 POST 到任意 webhook。endpoint 留空则不启用。",
+    "endpoint": "",
+    "method": "POST",
+    "auth_token": "",
+    "payload_field": "",
+    "extra": {},
+    "headers": {},
+    "timeout": 30
+  },
+  "mcp": {
+    "_comment": "MCP 目标：填 server（启动命令或 SSE/HTTP 地址）与 tool（工具名）后启用。",
+    "server": "",
+    "tool": ""
+  }
+}

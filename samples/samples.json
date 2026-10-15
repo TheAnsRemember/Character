@@ -1,0 +1,21 @@
+{
+  "meta": "示例验证样本集——模拟安泽彬真实思考片段的风格，用于跑通 JEV 路由评估流程。待替换为真实片段后再做真实验证。expected_skill / expected_need_llm 为人工标注的「应得结果」，用于算准确率。",
+  "samples": [
+    {"id": 1, "text": "明天要记得给张总发项目报价单，还有把周报填了，下午三点有个会得准备材料", "expected_skill": "todo", "expected_need_llm": true},
+    {"id": 2, "text": "这周要做的事：约供应商看样品、把 Kimmy 固件烧录脚本写完、跟法务确认合同细则", "expected_skill": "todo", "expected_need_llm": true},
+    {"id": 3, "text": "把昨天会议录音转成文字，然后整理成待办清单发给我", "expected_skill": "todo", "expected_need_llm": true},
+    {"id": 4, "text": "店感 MVP 这周上线了 K11 试点，但扫码后 UI 位置有点偏得调；下一步准备接 v2 点餐系统 API", "expected_skill": "existing_project", "expected_need_llm": true},
+    {"id": 5, "text": "小满 RAG 集成到一半，KnowYourself 文章喂了 200 篇，检索还行但生成经常跑题，得加过滤层", "expected_skill": "existing_project", "expected_need_llm": true},
+    {"id": 6, "text": "下周要交付店感试点报告，已经写完初稿，今晚再核对一遍数据", "expected_skill": "existing_project", "expected_need_llm": true},
+    {"id": 7, "text": "我有个蓝图：做一个面向出海小团队的 AI 周报工具，自动汇总飞书消息生成英文周报，先不做复杂功能", "expected_skill": "inspiration", "expected_need_llm": false},
+    {"id": 8, "text": "设想一个硬件订阅服务：用户月付租毛绒玩具，坏了换新，配件单独卖。这只是一个想法先记下来", "expected_skill": "inspiration", "expected_need_llm": false},
+    {"id": 9, "text": "想做一个记录灵感的小工具，但又不希望 AI 改我的原话，只帮我分类归档", "expected_skill": "inspiration", "expected_need_llm": false},
+    {"id": 10, "text": "今天深圳下雨，坐在咖啡店看窗外人来人往，突然觉得创业这件事挺孤独的，但又很上头", "expected_skill": "essay", "expected_need_llm": false},
+    {"id": 11, "text": "随笔：凌晨三点睡不着，想到我妈以前说的话，关于坚持和体面，记一笔", "expected_skill": "essay", "expected_need_llm": false},
+    {"id": 12, "text": "随笔：今天又被投资人问商业化路径，其实我自己也没完全想明白，先记着", "expected_skill": "essay", "expected_need_llm": false},
+    {"id": 13, "text": "最近一直在想，人活着到底图什么，钱赚到了然后呢，是不是该慢下来陪家人", "expected_skill": "life_talk", "expected_need_llm": false},
+    {"id": 14, "text": "我对成功的定义越来越模糊了，到底是社会定义的成功还是自己舒服，这个得想清楚", "expected_skill": "life_talk", "expected_need_llm": false},
+    {"id": 15, "text": "刚才那个 bug 又出现了", "expected_skill": "other", "expected_need_llm": false},
+    {"id": 16, "text": "不知道，累了", "expected_skill": "other", "expected_need_llm": false}
+  ]
+}

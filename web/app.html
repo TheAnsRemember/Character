@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Character</title>
+<link rel="stylesheet" href="app.css" />
+</head>
+<body>
+  <!-- 左侧热区：鼠标移到最左边才唤醒工具栏（平时不可见、不占空间） -->
+  <div id="edge" aria-hidden="true"></div>
+
+  <!-- ======== 侧栏 ======== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <svg class="yinyang" width="24" height="24" viewBox="0 0 100 100">
+        <defs>
+          <linearGradient id="inkGradS" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" style="stop-color:var(--logo-1)"/>
+            <stop offset="0.55" style="stop-color:var(--logo-2)"/>
+            <stop offset="1" style="stop-color:var(--logo-3)"/>
+          </linearGradient>
+          <linearGradient id="glossS" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#ffffff" stop-opacity="0.18"/>
+            <stop offset="0.42" stop-color="#ffffff" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <rect x="2" y="2" width="96" height="96" style="fill:var(--logo-bg)"/>
+        <path d="M2 2 L69.88 2 A67.88 67.88 0 0 1 50 50 A67.88 67.88 0 0 0 30.12 98 L2 98 Z" fill="url(#inkGradS)"/>
+        <rect x="2" y="2" width="96" height="96" fill="url(#glossS)"/>
+      </svg>
+      <span class="name">Character</span>
+    </div>
+
+    <div class="newchat">
+      <button onclick="newCapture()" data-i18n="newTask">+ 新任务</button>
+    </div>
+
+    <div class="ws-list" id="wsList"></div>
+
+    <button class="settings" id="settingsBtn" onclick="openSettings()" type="button">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34h.01a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87v.01a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1z"/></svg>
+      <span data-i18n="settings">设置</span>
+    </button>
+  </aside>
+
+  <!-- ======== 主区 ======== -->
+  <main class="main">
+    <section class="capture-col">
+      <div class="topbar">
+        <svg class="yinyang" width="22" height="22" viewBox="0 0 100 100">
+          <defs>
+          <linearGradient id="inkGradT" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" style="stop-color:var(--logo-1)"/>
+            <stop offset="0.55" style="stop-color:var(--logo-2)"/>
+            <stop offset="1" style="stop-color:var(--logo-3)"/>
+          </linearGradient>
+          <linearGradient id="glossT" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#ffffff" stop-opacity="0.18"/>
+            <stop offset="0.42" stop-color="#ffffff" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <rect x="2" y="2" width="96" height="96" style="fill:var(--logo-bg)"/>
+        <path d="M2 2 L69.88 2 A67.88 67.88 0 0 1 50 50 A67.88 67.88 0 0 0 30.12 98 L2 98 Z" fill="url(#inkGradT)"/>
+          <rect x="2" y="2" width="96" height="96" fill="url(#glossT)"/>
+        </svg>
+        <span class="slogan-anim" aria-label="Your insight shall never fade / 你的洞悉理应永存">
+          <span class="slogan-en">Your insight shall never fade</span>
+          <span class="slogan-cn">你的洞悉理应永存</span>
+        </span>
+      </div>
+      <div class="capture-inner">
+        <textarea id="input" data-i18n-placeholder="placeholder" placeholder="现在，写下你造的字吧"></textarea>
+        <div class="capture-actions">
+          <div class="calli-bar" id="calliQuick" role="group" aria-label="字体">
+            <button type="button" class="calli-btn" data-calli="lishu" style="font-family:'ZCOOL XiaoWei',serif" onclick="pickCalli('lishu')" data-i18n="calliLishu">隶书</button>
+            <button type="button" class="calli-btn" data-calli="xingshu" style="font-family:'Zhi Mang Xing',cursive" onclick="pickCalli('xingshu')" data-i18n="calliXingshu">行书</button>
+            <button type="button" class="calli-btn" data-calli="kaishu" style="font-family:'Ma Shan Zheng',serif" onclick="pickCalli('kaishu')" data-i18n="calliKaishu">楷书</button>
+            <button type="button" class="calli-btn" data-calli="caoshu" style="font-family:'Liu Jian Mao Cao',cursive" onclick="pickCalli('caoshu')" data-i18n="calliCaoshu">草书</button>
+          </div>
+          <span class="sn-toggle">
+            <span class="sn-label" data-i18n="snLabel">simple note</span>
+            <span class="switch" id="snSwitch" role="switch" aria-checked="false" tabindex="0" onclick="toggleCreate()"><span class="knob"></span></span>
+          </span>
+          <button class="btn ghost" id="summarizeBtn" type="button" onclick="summarize()" data-i18n="summarize" title="总结">总结</button>
+          <button class="btn ghost" id="copyInputBtn" type="button" onclick="copyInput()" data-i18n="copy" title="复制">复制</button>
+          <button class="btn send" id="archiveBtn" onclick="archive()" data-i18n-title="archive" title="存档" aria-label="存档">
+            <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 5.6 L19.2 14.2 L15.7 14.2 L12 10.2 L8.3 14.2 L4.8 14.2 Z" fill="currentColor"/>
+            </svg>
+          </button>
+        </div>
+        <div class="perm-ask" id="permAsk">
+          <span class="perm-ask-text" data-i18n="askTitle">要调用 AI 处理这条记录吗？</span>
+          <button class="btn ghost" type="button" data-i18n="askRaw" onclick="archive('archive_only')">只记录</button>
+          <button class="btn primary" type="button" data-i18n="askFull" onclick="archive('full')">AI 处理</button>
+        </div>
+      </div>
+    </section>
+
+    <aside class="taskbar" id="taskbar">
+      <div class="tb-inner">
+        <div class="tb-head" data-i18n="taskbarHead">任务栏 · 已存档 / 处理状态</div>
+        <div class="tb-list" id="tbList"></div>
+      </div>
+    </aside>
+    <div id="tbZone" aria-hidden="true"></div>
+  </main>
+
+  <!-- ======== 设置弹窗（DSH 同款：左导航 + 右内容两栏） ======== -->
+  <div class="modal-backdrop" id="settingsBackdrop" onclick="if(event.target===this)closeSettings()">
+    <div class="modal settings-modal" role="dialog" aria-modal="true" aria-label="设置">
+      <div class="set-head">
+        <span class="set-title" data-i18n="settingsTitle">设置</span>
+        <div class="set-head-actions">
+          <button class="set-ghost-btn" type="button" data-i18n="openConfig">打开配置文件</button>
+          <button class="modal-close" type="button" onclick="closeSettings()" aria-label="关闭">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 L18 18 M18 6 L6 18"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="set-body">
+        <nav class="set-nav">
+          <button class="set-nav-item on" data-tab="general" type="button" onclick="switchSetTab('general')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34h.01a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87v.01a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1z"/></svg>
+            <span data-i18n="navGeneral">通用设置</span>
+          </button>
+          <button class="set-nav-item" data-tab="model" type="button" onclick="switchSetTab('model')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><ellipse cx="12" cy="6" rx="7.5" ry="3"/><path d="M4.5 6v6c0 1.66 3.36 3 7.5 3s7.5-1.34 7.5-3V6"/><path d="M4.5 12v6c0 1.66 3.36 3 7.5 3s7.5-1.34 7.5-3v-6"/></svg>
+            <span data-i18n="navModel">模型</span>
+          </button>
+          <button class="set-nav-item" data-tab="plugin" type="button" onclick="switchSetTab('plugin')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></svg>
+            <span data-i18n="navPlugin">插件</span>
+          </button>
+          <button class="set-nav-item" data-tab="preset" type="button" onclick="switchSetTab('preset')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/></svg>
+            <span data-i18n="navPreset">Agent 预设</span>
+          </button>
+        </nav>
+
+        <div class="set-content">
+          <!-- 通用设置 -->
+          <section class="set-pane on" data-pane="general">
+            <div class="set-row">
+              <div class="set-row-main">
+                <div class="set-row-title" data-i18n="perm">权限</div>
+                <div class="set-row-desc" data-i18n="permDesc">选择新会话的默认权限模式</div>
+              </div>
+              <select class="set-select" id="set_perm" onchange="pickPerm(this.value)">
+                <option value="full" data-i18n="permFull">完全权限</option>
+                <option value="ask" data-i18n="permAsk">每次询问</option>
+                <option value="readonly" data-i18n="permReadonly">只读</option>
+              </select>
+            </div>
+            <div class="set-row">
+              <div class="set-row-main"><div class="set-row-title" data-i18n="lang">语言</div></div>
+              <select class="set-select" id="set_lang" onchange="pickLang(this.value)">
+                <option value="zh" data-i18n="langZh">中文</option>
+                <option value="en" data-i18n="langEn">English</option>
+              </select>
+            </div>
+            <div class="set-row">
+              <div class="set-row-main">
+                <div class="set-row-title" data-i18n="calli">字体</div>
+                <div class="set-row-desc" data-i18n="calliDesc">书写与记录卡片的中文字体</div>
+              </div>
+              <select class="set-select" id="set_calli" onchange="pickCalli(this.value)">
+                <option value="lishu" data-i18n="calliLishu">隶书</option>
+                <option value="xingshu" data-i18n="calliXingshu">行书</option>
+                <option value="kaishu" data-i18n="calliKaishu">楷书</option>
+                <option value="caoshu" data-i18n="calliCaoshu">草书</option>
+              </select>
+            </div>
+            <div class="set-row">
+              <div class="set-row-main"><div class="set-row-title" data-i18n="appear">外观</div></div>
+              <div class="set-appear">
+                <button class="appear-card on" type="button" data-theme="light" onclick="pickTheme('light')">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+                  <span data-i18n="light">浅色</span>
+                </button>
+                <button class="appear-card" type="button" data-theme="dark" onclick="pickTheme('dark')">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></svg>
+                  <span data-i18n="dark">深色</span>
+                </button>
+                <button class="appear-card" type="button" data-theme="system" onclick="pickTheme('system')">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor" stroke="none"/></svg>
+                  <span data-i18n="system">跟随系统</span>
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <!-- 模型 -->
+          <section class="set-pane" data-pane="model">
+            <div class="set-pane-title" data-i18n="modelTitle">模型</div>
+            <div class="set-pane-desc" data-i18n="modelDesc">填入各提供方的 API 密钥即可使用其模型。</div>
+
+            <div class="provider-card">
+              <div class="provider-name">TypeSafe JEV <span class="provider-id">typesafe-jev</span></div>
+              <div class="field">
+                <label for="set_jev_key" data-i18n="apiKey">API 密钥</label>
+                <input id="set_jev_key" type="password" data-i18n-placeholder="apiKeyPlaceholder" placeholder="输入 API 密钥" autocomplete="off" />
+              </div>
+              <details class="provider-adv">
+                <summary data-i18n="adv">自定义设置</summary>
+                <div class="field">
+                  <label for="set_threshold" data-i18n="threshold">分类阈值（0–1）</label>
+                  <input id="set_threshold" type="number" min="0" max="1" step="0.05" placeholder="0.7" />
+                </div>
+              </details>
+              <div class="provider-actions">
+                <button class="btn ghost" type="button" data-i18n="cancel" onclick="revertProvider('jev')">取消</button>
+                <button class="btn primary" type="button" data-i18n="save" onclick="saveProvider('jev', this)">保存</button>
+              </div>
+            </div>
+
+            <div class="provider-card">
+              <div class="field">
+                <label for="set_openai_key" data-i18n="apiKey">API 密钥</label>
+                <input id="set_openai_key" type="password" data-i18n-placeholder="apiKeyPlaceholder" placeholder="输入 API 密钥" autocomplete="off" />
+              </div>
+              <details class="provider-adv">
+                <summary data-i18n="adv">自定义设置</summary>
+                <div class="field">
+                  <label for="set_llm_base" data-i18n="llmBase">接口地址</label>
+                  <input id="set_llm_base" type="text" placeholder="https://open.bigmodel.cn/api/paas/v4" />
+                </div>
+                <div class="field">
+                  <label for="set_llm_model" data-i18n="llmModel">模型</label>
+                  <input id="set_llm_model" type="text" placeholder="glm-4-flash" />
+                </div>
+              </details>
+              <div class="provider-actions">
+                <button class="btn ghost" type="button" data-i18n="cancel" onclick="revertProvider('openai')">取消</button>
+                <button class="btn primary" type="button" data-i18n="save" onclick="saveProvider('openai', this)">保存</button>
+              </div>
+            </div>
+
+            <div class="add-row">
+              <button class="add-btn" type="button" data-i18n="addProvider">+ 添加提供方</button>
+              <button class="add-btn" type="button" data-i18n="addCustomProvider">+ 添加自定义提供方</button>
+            </div>
+          </section>
+
+          <!-- 插件 -->
+          <section class="set-pane" data-pane="plugin">
+            <div class="set-pane-title" data-i18n="navPlugin">插件</div>
+            <div class="set-pane-desc" data-i18n="pluginEmpty">暂无插件。</div>
+          </section>
+
+          <!-- Agent 预设 -->
+          <section class="set-pane" data-pane="preset">
+            <div class="set-pane-title" data-i18n="navPreset">Agent 预设</div>
+            <div class="set-pane-desc" data-i18n="presetEmpty">暂无预设。</div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======== 总结面板（点「总结」后弹出：看摘要 + 选目的地发送） ======== -->
+  <div class="modal-backdrop" id="summaryBackdrop" onclick="if(event.target===this)closeSummary()">
+    <div class="modal summary-modal" role="dialog" aria-modal="true" aria-label="总结">
+      <div class="set-head">
+        <span class="set-title">AI 摘要</span>
+        <div class="set-head-actions">
+          <button class="modal-close" type="button" onclick="closeSummary()" aria-label="关闭">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 L18 18 M18 6 L6 18"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="summary-body">
+        <div class="summary-meta" id="sumMeta"></div>
+        <div class="summary-text" id="sumBody"></div>
+        <div class="summary-actions">
+          <button class="btn primary" id="sumCopyBtn" type="button" onclick="copySummary()" title="复制内容与指令，粘进 Agent 对话即可">交给 Agent</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
