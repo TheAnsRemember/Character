@@ -193,11 +193,12 @@ def _run(args, desc):
 
 def setup_local_domain(project):
     print("\n--- 配置本地域名 character.test（需一次性输入开机密码）---")
-    # 1) 端口 80 是否已被占用（被占用则放弃，避免和 Apache 等冲突）
+    # 1) 端口 80 是否被"监听"占用（只查 LISTEN 状态，避免被出站连接误判）
     try:
-        out = subprocess.run(["lsof", "-ti", ":80"], capture_output=True, text=True)
+        out = subprocess.run(["lsof", "-iTCP:80", "-sTCP:LISTEN"],
+                             capture_output=True, text=True)
         if out.stdout.strip():
-            print("  [跳过] 本机 80 端口已被占用，改用 http://localhost:%d" % PORT)
+            print("  [跳过] 本机 80 端口已被监听占用，改用 http://localhost:%d" % PORT)
             return False
     except FileNotFoundError:
         pass  # 没有 lsof 就跳过检测，继续尝试
