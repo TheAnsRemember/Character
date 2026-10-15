@@ -39,21 +39,41 @@ APP="$STAGE/Character/Character.app"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$ROOT/web/app-icon.png" "$APP/Contents/Resources/appicon.png" 2>/dev/null || true
 
-# 启动壳：优先相对定位（.app 同级就是 web/），绝对路径只作最后兜底。
+# 启动壳：先用「记录的项目位置」，再相对定位，最后扫常见位置。
+# 这样装完桌面按钮后，即使 Character 文件夹被挪走/改名，按钮照样能用。
 cat > "$APP/Contents/MacOS/character" <<'LAUNCHER'
 #!/usr/bin/env bash
-# Character 桌面壳：双击启动本地服务并自动打开浏览器（相对定位版，可自由分发）
+# Character 桌面壳：双击启动本地服务并自动打开浏览器（可自由分发版）
 set -u
 SELF_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-APP_DIR="$(cd "$SELF_DIR/.." && pwd)"      # .app 所在目录
+APP_DIR="$(cd "$SELF_DIR/.." && pwd)"       # .app 所在目录
+MEM="$HOME/Library/Application Support/Character/project.txt"
+
 PROJ_DIR=""
-for cand in "$APP_DIR" "$APP_DIR/../Character" "$HOME/Desktop/Character"; do
-  if [ -f "$cand/web/server.py" ]; then PROJ_DIR="$(cd "$cand" && pwd)"; break; fi
-done
+# 1) 上次安装时记录的位置（最可靠：用户可能把文件夹挪走了）
+if [ -f "$MEM" ]; then
+  CAND="$(cat "$MEM" 2>/dev/null)"
+  [ -f "$CAND/web/server.py" ] && PROJ_DIR="$CAND"
+fi
+# 2) 跟着 .app 走（.app 同级，或同级 Character/）
 if [ -z "$PROJ_DIR" ]; then
-  osascript -e 'display dialog "找不到 Character 代码（web/server.py）。请确认 Character.app 和 Character 文件夹在一起。" buttons {"好"} default button 1' >/dev/null 2>&1
+  for cand in "$APP_DIR" "$APP_DIR/../Character" "$APP_DIR/.." "$SELF_DIR"; do
+    if [ -f "$cand/web/server.py" ]; then PROJ_DIR="$(cd "$cand" && pwd)"; break; fi
+  done
+fi
+# 3) 常见位置兜底（桌面/下载/文档）
+if [ -z "$PROJ_DIR" ]; then
+  for cand in "$HOME/Desktop/Character" "$HOME/Downloads/Character" "$HOME/Documents/Character"; do
+    if [ -f "$cand/web/server.py" ]; then PROJ_DIR="$(cd "$cand" && pwd)"; break; fi
+  done
+fi
+if [ -z "$PROJ_DIR" ]; then
+  osascript -e 'display dialog "找不到 Character 代码（web/server.py）。\n\n请把 Character 文件夹放回桌面或下载目录，或重新运行一次文件夹里的「安装到桌面.command」。" buttons {"好"} default button 1' >/dev/null 2>&1
   exit 1
 fi
+# 顺手把找到的位置记下来，下次直接用
+mkdir -p "$(dirname "$MEM")" 2>/dev/null && printf '%s' "$PROJ_DIR" > "$MEM" 2>/dev/null
+
 WEB_DIR="$PROJ_DIR/web"
 PORT=8787
 URL="http://localhost:$PORT/app"
@@ -73,6 +93,37 @@ open "$URL"
 exit 0
 LAUNCHER
 chmod +x "$APP/Contents/MacOS/character"
+
+# 「安装到桌面.command」：用户双击它 → 桌面出现 Character 按钮（.command 双击即可运行）
+echo "==> 生成「安装到桌面.command」"
+INSTALL_CMD="$STAGE/Character/安装到桌面.command"
+cat > "$INSTALL_CMD" <<'INSTALL'
+#!/usr/bin/env bash
+# 双击本文件即可把 Character 按钮装到桌面，并记录项目位置。
+set -u
+SRC_DIR="$(cd "$(dirname "$0")" && pwd)"
+DESK="$HOME/Desktop/Character.app"
+
+if [ ! -f "$SRC_DIR/web/server.py" ]; then
+  osascript -e 'display dialog "请在解压出来的 Character 文件夹里运行本文件。" buttons {"好"} default button 1' >/dev/null 2>&1
+  exit 1
+fi
+
+# 复制 .app 到桌面（连同图标与启动壳）
+rm -rf "$DESK"
+cp -R "$SRC_DIR/Character.app" "$DESK"
+
+# 记录项目位置，让桌面按钮即使在别处也能找到代码
+MEM="$HOME/Library/Application Support/Character/project.txt"
+mkdir -p "$(dirname "$MEM")"
+printf '%s' "$SRC_DIR" > "$MEM"
+
+osascript <<'EOS'
+display dialog "✅ 装好了！\n\n桌面上已出现 Character 图标，以后双击它就能打开 Character。\n\n（首次若被 macOS 拦，右键 → 打开 确认一次即可）" buttons {"好"} default button 1 with title "Character 安装完成"
+EOS
+exit 0
+INSTALL
+chmod +x "$INSTALL_CMD"
 
 # Info.plist（用 png ico，macOS 会自动缩放；更稳妥的做法是 icns，但 png 也能显示）
 cat > "$APP/Contents/Info.plist" <<'PLIST'
@@ -106,5 +157,6 @@ SIZE="$(du -h "$ZIP" | cut -f1)"
 echo ""
 echo "✅ 打包完成：$ZIP  ($SIZE)"
 echo ""
-echo "用户使用：下载 → 解压 → 双击 Character 文件夹里的 Character.app 即可打开服务。"
+echo "用户使用：下载 → 解压 → 双击文件夹里的「安装到桌面.command」"
+echo "        → 桌面出现 Character 按钮 → 以后双击按钮即用。"
 echo "（首次若被 macOS 拦，右键 → 打开 确认一次即可）"
