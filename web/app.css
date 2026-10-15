@@ -71,6 +71,16 @@ html[data-theme="dark"] {
 html[lang="en"] {
   --font-ui: "Dancing Script", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
 }
+/* 英文手写体笔画细、字面偏小，英文模式下整体字号放大一档（中文模式不受影响） */
+html[lang="en"] { --fs-content: 25px; --fs-ui: 15.5px; }
+html[lang="en"] #input { font-size: 34px; }
+/* 设置面板在英文下手写体更显小，单独再放大一档 */
+html[lang="en"] .set-title { font-size: 20px; }
+html[lang="en"] .set-nav-item { font-size: 16px; }
+html[lang="en"] .set-row-title { font-size: 16.5px; }
+html[lang="en"] .set-row-desc { font-size: 14px; }
+html[lang="en"] .set-select { font-size: 15.5px; }
+html[lang="en"] .appear-card { font-size: 15.5px; }
 
 /* —— 字体选项：隶书 / 楷书 / 草书 / 行书（设置里切换，写在 html 上全局生效）—— */
 html[data-calli="lishu"]   { --font-calli: "ZCOOL XiaoWei"; }
@@ -122,7 +132,7 @@ html[data-calli="xingshu"] { --font-calli: "Zhi Mang Xing"; }
 * { box-sizing: border-box; margin: 0; }
 html, body { height: 100%; }
 body {
-  font: 14px / 1.65 var(--font-ui);
+  font: var(--fs-ui, 14px) / 1.65 var(--font-ui);
   color: var(--ink-800);
   background: var(--paper);
   display: flex;
@@ -334,12 +344,15 @@ button { font-family: inherit; cursor: pointer; }
 /* 占位符：显式指定字体栈（不吃继承），保证这块出现的字一定和用户输入同款 */
 #input::placeholder { color: var(--ink-300); font-family: var(--font-input); }
 
-/* 底部操作栏：默认隐身，鼠标移到输入区才淡入（无框、纯文字） */
+/* 底部操作栏：默认隐身；鼠标进入底部热区（capture-hotzone，含输入区+按钮区）即淡入
+   —— 刻意放宽触发区，避免"必须精确落在按钮上才看得见"，别人才知道还有总结/复制/存档 */
 .capture-actions { display: flex; align-items: center; gap: 14px; margin-top: 18px; opacity: 0; transition: opacity .2s ease; }
-.capture-inner:hover .capture-actions,
-.capture-actions:hover { opacity: 1; }
-/* 正在输入（聚焦）时强制隐藏底部操作栏，书写区保持干净 */
-.capture-inner.hide-actions .capture-actions { opacity: 0 !important; pointer-events: none; }
+/* 正在输入（聚焦）且鼠标不在底部热区时隐藏，书写区保持干净 */
+.capture-hotzone.hide-actions:not(:hover) .capture-actions { opacity: 0; pointer-events: none; }
+/* 鼠标进入底部热区即显形——权重高于上面的隐藏，"鼠标一动就显示" */
+.capture-hotzone:hover .capture-actions,
+.capture-hotzone.hide-actions:hover .capture-actions,
+.capture-actions:hover { opacity: 1; pointer-events: auto; }
 
 
 

@@ -69,7 +69,7 @@
           <span class="slogan-cn">你的洞悉理应永存</span>
         </span>
       </div>
-      <div class="capture-inner">
+      <div class="capture-inner capture-hotzone">
         <textarea id="input" data-i18n-placeholder="placeholder" placeholder="现在，写下你造的字吧"></textarea>
         <div class="capture-actions">
           <div class="calli-bar" id="calliQuick" role="group" aria-label="字体">
@@ -113,7 +113,6 @@
       <div class="set-head">
         <span class="set-title" data-i18n="settingsTitle">设置</span>
         <div class="set-head-actions">
-          <button class="set-ghost-btn" type="button" data-i18n="openConfig">打开配置文件</button>
           <button class="modal-close" type="button" onclick="closeSettings()" aria-label="关闭">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 L18 18 M18 6 L6 18"/></svg>
           </button>
@@ -159,18 +158,6 @@
               <select class="set-select" id="set_lang" onchange="pickLang(this.value)">
                 <option value="zh" data-i18n="langZh">中文</option>
                 <option value="en" data-i18n="langEn">English</option>
-              </select>
-            </div>
-            <div class="set-row">
-              <div class="set-row-main">
-                <div class="set-row-title" data-i18n="calli">字体</div>
-                <div class="set-row-desc" data-i18n="calliDesc">书写与记录卡片的中文字体</div>
-              </div>
-              <select class="set-select" id="set_calli" onchange="pickCalli(this.value)">
-                <option value="lishu" data-i18n="calliLishu">隶书</option>
-                <option value="xingshu" data-i18n="calliXingshu">行书</option>
-                <option value="kaishu" data-i18n="calliKaishu">楷书</option>
-                <option value="caoshu" data-i18n="calliCaoshu">草书</option>
               </select>
             </div>
             <div class="set-row">
