@@ -182,11 +182,11 @@ exit 0
 #   需一次性 sudo 授权；任何一步失败都回退到 localhost，绝不卡死。
 # --------------------------------------------------------------------------
 def _run(args, desc):
-    """执行命令；失败仅打印警告并返回 False，不抛异常。"""
+    """执行命令；失败仅打印警告并返回 False，不抛异常（含 sudo 不可用/被拦截）。"""
     try:
         subprocess.run(args, check=True)
         return True
-    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+    except (subprocess.CalledProcessError, OSError) as e:
         print("  [警告] %s 失败：%s" % (desc, e))
         return False
 
@@ -203,16 +203,25 @@ def setup_local_domain(project):
     except FileNotFoundError:
         pass  # 没有 lsof 就跳过检测，继续尝试
 
-    # 2) 转发器落到稳定路径（与 .app 位置解耦）
+    # 2) 转发器落到稳定路径（与 .app 位置解耦）。系统目录需 sudo 写。
     lib_dir = "/usr/local/lib/character"
-    try:
-        os.makedirs(lib_dir, exist_ok=True)
-    except OSError as e:
-        print("  [跳过] 无法创建 %s：%s" % (lib_dir, e))
-        return False
     proxy_dst = os.path.join(lib_dir, "macos-proxy.py")
-    shutil.copyfile(os.path.join(HERE, "macos-proxy.py"), proxy_dst)
     log_path = os.path.join(lib_dir, "proxy.log")
+    if not _run(["sudo", "mkdir", "-p", lib_dir], "创建 %s" % lib_dir):
+        return False
+    # 先写到临时文件，再 sudo 拷到系统目录（避免直接 root 写路径问题）
+    tmp_proxy = os.path.join(project, "macos-proxy.py.tmp")
+    shutil.copyfile(os.path.join(HERE, "macos-proxy.py"), tmp_proxy)
+    if not _run(["sudo", "cp", tmp_proxy, proxy_dst], "安装转发器到 %s" % lib_dir):
+        try:
+            os.remove(tmp_proxy)
+        except OSError:
+            pass
+        return False
+    try:
+        os.remove(tmp_proxy)
+    except OSError:
+        pass
 
     # 3) /etc/hosts 幂等写入
     hosts = "/etc/hosts"
