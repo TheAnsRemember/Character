@@ -614,7 +614,34 @@ function focusTask(ts) {
 }
 
 /* ---------- 6) 视图 / 输入 ---------- */
-function newCapture() { hidePermAsk(); if ($('wsMoveMenu')) $('wsMoveMenu').remove(); addingSpace = false; unpinSidebar(); $('input').value = ''; $('input').focus(); }
+/* 「+ 新任务」= 新建入口：开一页全新的空白输入。
+   若当前页已有没存档的内容，先问一句「是否丢弃」，绝不静默清空。 */
+let newPageFlash = null;                  // 新页面提示条的一次性定时器
+function newCapture() {
+  const inp = $('input');
+  const hasDraft = inp.value.trim().length > 0;
+  const go = () => {
+    hidePermAsk();
+    if ($('wsMoveMenu')) $('wsMoveMenu').remove();
+    addingSpace = false;
+    unpinSidebar();
+    inp.value = '';
+    document.body.classList.add('new-page');   // 新页面状态（新页视觉标记）
+    inp.focus();
+    // 输入一个字后就不再提示「新的一页」
+    if (newPageFlash) clearTimeout(newPageFlash);
+    newPageFlash = setTimeout(() => {
+      document.body.classList.remove('new-page');
+      newPageFlash = null;
+    }, 2600);
+  };
+  if (hasDraft) {
+    // 有草稿 → 确认再丢弃，不静默清空
+    if (confirm(tr('discardDraft'))) go();
+    return;
+  }
+  go();
+}
 
 /* ============================================================
    7) 设置（DSH 同款：左导航 + 右内容两栏）
@@ -630,6 +657,7 @@ function newCapture() { hidePermAsk(); if ($('wsMoveMenu')) $('wsMoveMenu').remo
 const I18N = {
   zh: {
     newTask: '+ 新任务',
+    discardDraft: '当前这页还没存档，确定丢弃、直接开新的一页吗？',
     wsTasks: '任务',
     wsSpaces: '空间',
     moveTo: '移动到空间',
@@ -693,6 +721,7 @@ const I18N = {
   },
   en: {
     newTask: '+ New task',
+    discardDraft: "This page hasn't been archived yet. Discard it and start a new one?",
     wsTasks: 'Tasks',
     wsSpaces: 'Spaces',
     moveTo: 'Move to space',

@@ -284,6 +284,16 @@ button { font-family: inherit; cursor: pointer; }
   height: 60px; min-height: 60px; border-bottom: 1px solid var(--line);
   display: flex; align-items: center; gap: 11px; padding: 0 26px;
 }
+/* 「+ 新任务」新页面状态：书写区轻微浮现一下，提示"这是新开的一页"（2.6s 后自动消失） */
+body.new-page #input { animation: newPageIn .5s ease; }
+@keyframes newPageIn {
+  0%   { opacity: .25; }
+  100% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  body.new-page #input { animation: none; }
+}
+
 /* slogan 变换动画：英文（Dancing Script）↔ 中文（Ma Shan Zheng 楷书）交叉淡入淡出 + 位移缩放 */
 .topbar .slogan-anim {
   display: grid;
