@@ -596,11 +596,23 @@ function deleteTask(ts) {
 
 function focusTask(ts) {
   const t = tasks.find(x => x.ts === ts);
+  const inp = $('input');
   if (t) {                                  // 点左侧记录：原文回填到书写框
-    const text = rawTextOf(t);
-    if (text) $('input').value = text;
+    const text = rawTextOf(t) || t.text || '';
+    if (text) {
+      inp.value = text;
+      // 回填后必须有反馈，否则点了"像没反应"：滚动到底 + 聚焦 + 短暂高亮 + 提示
+      inp.scrollTop = inp.scrollHeight;
+      inp.focus();
+      inp.animate(
+        [{ backgroundColor: 'rgba(139,108,224,.14)' }, { backgroundColor: '' }],
+        { duration: 900, easing: 'ease-out' }
+      );
+      toast(tr('restored') + ' ' + String(text).slice(0, 18) + (String(text).length > 18 ? '…' : ''));
+    } else {
+      toast(tr('noOriginal'));
+    }
   }
-  // 只在对话区域显示，不拉起右侧任务栏
 }
 
 /* ---------- 6) 视图 / 输入 ---------- */
@@ -711,6 +723,8 @@ const I18N = {
     micUnsupported: '当前浏览器不支持语音识别，请用 Chrome 或 Edge',
     micDenied: '没拿到麦克风权限，请在浏览器地址栏允许后再试',
     micFailed: '语音识别没能启动，请再试一次',
+    restored: '已把这条想法取回输入框：',
+    noOriginal: '这条记录没存原文，取不回来了',
     discardDraft: '当前这页还没存档，确定丢弃、直接开新的一页吗？',
     wsTasks: '任务',
     wsSpaces: '空间',
@@ -779,6 +793,8 @@ const I18N = {
     micUnsupported: 'This browser has no speech recognition. Please use Chrome or Edge.',
     micDenied: 'Microphone not allowed. Allow it from the address bar, then retry.',
     micFailed: 'Speech recognition could not start. Please try again.',
+    restored: 'Brought this note back into the box: ',
+    noOriginal: 'This record has no saved text to restore.',
     discardDraft: "This page hasn't been archived yet. Discard it and start a new one?",
     wsTasks: 'Tasks',
     wsSpaces: 'Spaces',
