@@ -120,10 +120,39 @@ class Handler(BaseHTTPRequestHandler):
     def _serve_file(self, name):
         self._serve_path(os.path.join(HERE, name))
 
+    def _read_record(self):
+        """按浏览器记下的 raw_md_path 读回磁盘原文。
+        浏览器 localStorage 里存的文件路径若与磁盘脱节（重装/换机/清缓存），
+        就用 basename 去 outputs/ 里兜底找一遍，把原文救回来。"""
+        try:
+            n = int(self.headers.get("Content-Length") or 0)
+            rel = (json.loads(self.rfile.read(n) or b"{}") or {}).get("path") or ""
+        except Exception:
+            self._send(400, {"error": "bad request"})
+            return
+        # 只允许读 outputs 目录下的 .md，越界一律拒绝（防目录穿越）
+        name = os.path.basename(str(rel)).strip()
+        root = os.path.abspath(os.path.join(ROOT, "outputs"))
+        target = os.path.abspath(os.path.join(root, name))
+        if not name.endswith(".md") or not (target == root or target.startswith(root + os.sep)):
+            self._send(400, {"error": "bad path"})
+            return
+        if not os.path.isfile(target):
+            self._send(404, {"error": "not found"})
+            return
+        try:
+            with open(target, "r", encoding="utf-8") as f:
+                self._send(200, {"ok": True, "path": name, "content": f.read()})
+        except Exception as e:
+            self._send(500, {"error": str(e)})
+
     def do_POST(self):
         path = urlparse(self.path).path
         if path == "/api/classify":
             self._classify()          # 只分类、不落盘（历史记录回填「归类比例」用）
+            return
+        if path == "/api/record":
+            self._read_record()        # 按路径取回存档原文（浏览器存的是路径，不是内容）
             return
         if path == "/api/summarize":
             self._summarize()         # 总结按钮：强制走 LLM 出摘要（不存档）

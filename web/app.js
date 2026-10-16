@@ -319,7 +319,7 @@ async function ensureServerMode() {
 function rawTextOf(t) {
   const md = t.raw_md || '';
   if (!md) return '';
-  const m = md.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/);   // 剥掉 frontmatter
+  const m = md.match(/^\\?---[ \t]*\r?\n[\s\S]*?\r?\n\\?---[ \t]*\r?\n?/);   // 剥掉 frontmatter（容错：\--- 写法 + 行尾空格）
   return (m ? md.slice(m[0].length) : md).trim();
 }
 
@@ -594,24 +594,47 @@ function deleteTask(ts) {
   renderWorkspace();                           // 左侧列表少一条
 }
 
-function focusTask(ts) {
+/* 浏览器里只记了「文件路径」没记原文时（清过缓存/换过机），去磁盘把原文捞回来。
+   这样旧记录不会因为路径还在、内容丢了就打不开。 */
+async function fetchOriginal(t) {
+  const p = t.raw_path || t.raw_md_path || '';
+  if (!p) return '';
+  try {
+    const r = await fetch('/api/record', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: p })
+    });
+    if (!r.ok) return '';
+    const j = await r.json();
+    const content = String(j.content || '');
+    // 剥掉 frontmatter，只留正文（兼容个别文件写成 \--- 的情况）
+    const m = content.match(/^\\?---[ \t]*\r?\n[\s\S]*?\r?\n\\?---[ \t]*\r?\n?/);
+    return (m ? content.slice(m[0].length) : content).trim();
+  } catch { return ''; }
+}
+
+async function focusTask(ts) {
   const t = tasks.find(x => x.ts === ts);
   const inp = $('input');
-  if (t) {                                  // 点左侧记录：原文回填到书写框
-    const text = rawTextOf(t) || t.text || '';
-    if (text) {
-      inp.value = text;
-      // 回填后必须有反馈，否则点了"像没反应"：滚动到底 + 聚焦 + 短暂高亮 + 提示
-      inp.scrollTop = inp.scrollHeight;
-      inp.focus();
-      inp.animate(
-        [{ backgroundColor: 'rgba(139,108,224,.14)' }, { backgroundColor: '' }],
-        { duration: 900, easing: 'ease-out' }
-      );
-      toast(tr('restored') + ' ' + String(text).slice(0, 18) + (String(text).length > 18 ? '…' : ''));
-    } else {
-      toast(tr('noOriginal'));
-    }
+  if (!t) return;
+  let text = rawTextOf(t);
+  // 本地没原文 → 去磁盘按路径捞真原文（比标题有用得多）
+  if (!text) text = await fetchOriginal(t);
+  // 磁盘也没有 → 退回用标题，至少让你知道这条存在过
+  if (!text) text = t.text || '';
+  if (text) {
+    inp.value = text;
+    // 回填后必须有反馈，否则点了"像没反应"：滚动到底 + 聚焦 + 短暂高亮 + 提示
+    inp.scrollTop = inp.scrollHeight;
+    inp.focus();
+    inp.animate(
+      [{ backgroundColor: 'rgba(139,108,224,.14)' }, { backgroundColor: '' }],
+      { duration: 900, easing: 'ease-out' }
+    );
+    toast(tr('restored') + ' ' + String(text).slice(0, 18) + (String(text).length > 18 ? '…' : ''));
+  } else {
+    toast(tr('noOriginal'));
   }
 }
 
